@@ -22,10 +22,8 @@ Thumbs.db
 *.swo
 
 # sensitive configs
-configs/caddy/data/
-configs/caddy/config/
-configs/pihole/etc-pihole/
-configs/pihole/etc-dnsmasq.d/
+configs/caddy/
+configs/pihole/
 configs/netdata/
 configs/.env
 configs/*-config.env
