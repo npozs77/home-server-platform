@@ -1,0 +1,30 @@
+# Sensitive files
+*.key
+*.pem
+*.env
+.env
+*.secret
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# sensitive configs
+configs/caddy/data/
+configs/caddy/config/
+configs/pihole/etc-pihole/
+configs/pihole/etc-dnsmasq.d/
+configs/netdata/
+configs/.env
+configs/*-config.env
