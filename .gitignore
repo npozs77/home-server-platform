@@ -25,5 +25,7 @@ Thumbs.db
 configs/caddy/
 configs/pihole/
 configs/netdata/
+configs/samba/
+configs/docker-compose/
 configs/.env
 configs/*-config.env

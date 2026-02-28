@@ -6,7 +6,7 @@ This guide documents all configuration files used in the home media server infra
 
 ## Configuration Strategy
 
-**Logical Grouping Approach**: Configuration is organized by purpose, not deployment phase. This eliminates duplication and provides clear ownership of variables.
+Configuration is organized by purpose for clarity and to avoid duplication.
 
 ## Configuration Files
 
@@ -15,14 +15,6 @@ This guide documents all configuration files used in the home media server infra
 | `configs/foundation.env` | System-level configuration (timezone, hostname, network) | All phases |
 | `configs/services.env` | Service-specific configuration (domains, SMTP, DNS) | Phase 02+ |
 | `configs/secrets.env` | Sensitive data (passphrases, API keys) | All phases |
-
-**Benefits of Logical Grouping**:
-- No duplication (each variable in exactly one file)
-- Clear ownership (network config in foundation.env, SMTP in services.env)
-- Logical grouping (related variables together)
-- Reusable across phases (foundation.env used by all phases)
-
-**Anti-Pattern**: Phase-based configuration (phase1-config.env, phase2-config.env) causes duplication and unclear ownership. See `.kiro/specs/refactor_fix_ph01-02/design.md` for details.
 
 ## Foundation Configuration (foundation.env)
 
@@ -369,26 +361,16 @@ sudo cp /opt/homeserver/configs/secrets.env \
         /opt/homeserver/configs/secrets.env.backup
 ```
 
-## Migration from Phase-Based Configuration
-
-If you have existing phase-based configuration files (phase1-config.env, phase2-config.env), see `.kiro/specs/refactor_fix_ph01-02/design.md` for migration guidance.
-
-**Quick Migration**:
-1. Extract system-level variables from phase1-config.env → foundation.env
-2. Extract service-specific variables from phase2-config.env → services.env
-3. Extract sensitive variables from both → secrets.env
-4. Remove old phase-based config files
-5. Update deployment scripts to source new config files
-
 ## Related Documentation
 
-- Deployment Manual: `docs/deployment_manuals/phase1-foundation.md`
-- Requirements: `.kiro/specs/01-foundation/requirements.md`
-- Design: `.kiro/specs/01-foundation/design.md`
-- Tasks: `.kiro/specs/01-foundation/tasks.md`
-- Migration Guide: `.kiro/specs/refactor_fix_ph01-02/design.md`
+- Deployment Manuals: 
+  - `docs/deployment_manuals/phase1-foundation.md`
+  - `docs/deployment_manuals/phase2-infrastructure.md`
+  - `docs/deployment_manuals/phase3-services.md`
+
 
 ---
 
-**Last Updated**: 2025-02-01  
-**Version**: 2.0 (Logical Grouping)
+**Last Updated**: 2025-02-26  
+**Version**: 2.0
+

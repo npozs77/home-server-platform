@@ -6,6 +6,9 @@ set -euo pipefail
 # Prerequisites: Phase 1 and 2 complete, SSH keys prepared, Samba passwords chosen
 # Usage: sudo ./deploy-phase3-core-services.sh [--dry-run]
 
+# Script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Source utility libraries (absolute paths)
 source /opt/homeserver/scripts/operations/utils/output-utils.sh
 source /opt/homeserver/scripts/operations/utils/env-utils.sh
@@ -93,6 +96,17 @@ init_config() {
     
     echo ""
     save_config
+    
+    echo ""
+    print_info "IMPORTANT: Set Samba passwords in secrets.env before provisioning users"
+    echo "Required variables:"
+    local all_users="$ADMIN_USER $POWER_USERS $STANDARD_USERS"
+    for user in $all_users; do
+        echo "  - SAMBA_PASSWORD_${user}"
+    done
+    echo ""
+    echo "Edit: /opt/homeserver/configs/secrets.env"
+    echo "Then run: sudo chmod 600 /opt/homeserver/configs/secrets.env"
 }
 
 # Validate configuration
@@ -103,12 +117,31 @@ validate_config() {
     load_config || { print_error "Configuration not found. Run option 0 first."; return 1; }
     
     local status=0
-    validate_required_vars "ADMIN_USER" "POWER_USER" "STANDARD_USER" "SAMBA_WORKGROUP" "SAMBA_SERVER_STRING" "JELLYFIN_SERVER_NAME" || status=1
+    validate_required_vars "ADMIN_USER" "POWER_USERS" "STANDARD_USERS" "SAMBA_WORKGROUP" "SAMBA_SERVER_STRING" "JELLYFIN_SERVER_NAME" || status=1
     
-    # Validate usernames (lowercase, alphanumeric, underscore)
+    # Validate usernames (lowercase, alphanumeric, underscore, space-separated)
     [[ "$ADMIN_USER" =~ ^[a-z0-9_]+$ ]] && print_success "Admin username valid" || { print_error "Admin username invalid"; status=1; }
-    [[ "$POWER_USER" =~ ^[a-z0-9_]+$ ]] && print_success "Power user username valid" || { print_error "Power user username invalid"; status=1; }
-    [[ "$STANDARD_USER" =~ ^[a-z0-9_]+$ ]] && print_success "Standard user username valid" || { print_error "Standard user username invalid"; status=1; }
+    [[ "$POWER_USERS" =~ ^[a-z0-9_\ ]+$ ]] && print_success "Power user usernames valid" || { print_error "Power user usernames invalid"; status=1; }
+    [[ "$STANDARD_USERS" =~ ^[a-z0-9_\ ]+$ ]] && print_success "Standard user usernames valid" || { print_error "Standard user usernames invalid"; status=1; }
+    
+    # Validate Samba configuration
+    [[ -n "$SAMBA_WORKGROUP" ]] && print_success "Samba workgroup valid" || { print_error "Samba workgroup missing"; status=1; }
+    [[ -n "$SAMBA_SERVER_STRING" ]] && print_success "Samba server description valid" || { print_error "Samba server description missing"; status=1; }
+    
+    # Validate Jellyfin configuration
+    [[ -n "$JELLYFIN_SERVER_NAME" ]] && print_success "Jellyfin server name valid" || { print_error "Jellyfin server name missing"; status=1; }
+    
+    # Validate Samba passwords in secrets.env
+    local all_users="$ADMIN_USER $POWER_USERS $STANDARD_USERS"
+    for user in $all_users; do
+        local password_var="SAMBA_PASSWORD_${user}"
+        if [[ -n "${!password_var}" ]]; then
+            print_success "Samba password for $user found"
+        else
+            print_error "Samba password for $user missing (set $password_var in secrets.env)"
+            status=1
+        fi
+    done
     
     echo ""
     [[ $status -eq 0 ]] && { print_success "All checks passed!"; return 0; } || { print_error "Some checks failed"; return 1; }
@@ -118,75 +151,75 @@ validate_config() {
 execute_task_2_1() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export DATA_MOUNT
-    "${SCRIPT_DIR}/tasks/task-ph3-01-create-media-dirs.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    /opt/homeserver/scripts/deploy/tasks/task-ph3-01-create-media-dirs.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_2_2() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export DATA_MOUNT
-    "${SCRIPT_DIR}/tasks/task-ph3-02-create-jellyfin-dirs.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    /opt/homeserver/scripts/deploy/tasks/task-ph3-02-create-jellyfin-dirs.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_3_1() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export SAMBA_WORKGROUP SAMBA_SERVER_STRING
-    "${SCRIPT_DIR}/tasks/task-ph3-03-create-samba-config.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-03-create-samba-config.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_3_2() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export DATA_MOUNT SAMBA_WORKGROUP TIMEZONE
-    "${SCRIPT_DIR}/tasks/task-ph3-04-deploy-samba.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-04-deploy-samba.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_3_3() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export SERVER_IP
-    "${SCRIPT_DIR}/tasks/task-ph3-05-verify-samba.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-05-verify-samba.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_4_1() {
-    "${SCRIPT_DIR}/tasks/task-ph3-06-create-user-scripts.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-06-create-user-scripts.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_5_1() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export ADMIN_USER
-    "${SCRIPT_DIR}/tasks/task-ph3-07-provision-admin.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-07-provision-admin.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_5_2() {
     load_config || { print_error "Configuration not loaded"; return 1; }
-    export POWER_USER
-    "${SCRIPT_DIR}/tasks/task-ph3-08-provision-power.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    export POWER_USERS
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-08-provision-power.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_5_3() {
     load_config || { print_error "Configuration not loaded"; return 1; }
-    export STANDARD_USER
-    "${SCRIPT_DIR}/tasks/task-ph3-09-provision-standard.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    export STANDARD_USERS
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-09-provision-standard.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_6_1() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export DATA_MOUNT TIMEZONE INTERNAL_SUBDOMAIN DOMAIN
-    "${SCRIPT_DIR}/tasks/task-ph3-10-create-jellyfin-compose.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-10-create-jellyfin-compose.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_6_2() {
-    "${SCRIPT_DIR}/tasks/task-ph3-11-deploy-jellyfin.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-11-deploy-jellyfin.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_6_3() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export INTERNAL_SUBDOMAIN DOMAIN
-    "${SCRIPT_DIR}/tasks/task-ph3-12-configure-caddy-jellyfin.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-12-configure-caddy-jellyfin.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 execute_task_6_4() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export SERVER_IP INTERNAL_SUBDOMAIN DOMAIN
-    "${SCRIPT_DIR}/tasks/task-ph3-13-configure-dns-jellyfin.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph3-13-configure-dns-jellyfin.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
 # Validation function
