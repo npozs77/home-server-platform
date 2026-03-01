@@ -10,9 +10,14 @@ validate_samba_container() {
 
 # Validate personal folders exist
 validate_personal_folders() {
-    [[ -d "${DATA_MOUNT}/users/${ADMIN_USER}" ]] && \
-    [[ -d "${DATA_MOUNT}/users/${POWER_USER}" ]] && \
-    [[ -d "${DATA_MOUNT}/users/${STANDARD_USER}" ]]
+    local all_users="$ADMIN_USER $POWER_USERS $STANDARD_USERS"
+    for user in $all_users; do
+        if [[ ! -d "${DATA_MOUNT}/users/${user}" ]]; then
+            echo "ERROR: Personal folder missing for user: $user"
+            return 1
+        fi
+    done
+    return 0
 }
 
 # Validate family folders exist
@@ -23,18 +28,36 @@ validate_family_folders() {
     [[ -d "${DATA_MOUNT}/family/Projects" ]]
 }
 
-# Validate media folders exist
+# Validate media folders exist with correct ownership
 validate_media_folders() {
-    [[ -d "${DATA_MOUNT}/media/Movies" ]] && \
-    [[ -d "${DATA_MOUNT}/media/TV Shows" ]] && \
-    [[ -d "${DATA_MOUNT}/media/Music" ]]
+    # Check all subdirectories in /mnt/data/media/
+    local all_valid=true
+    for dir in ${DATA_MOUNT}/media/*/; do
+        if [[ -d "$dir" ]]; then
+            local owner=$(stat -c "%U" "$dir")
+            local group=$(stat -c "%G" "$dir")
+            local perms=$(stat -c "%a" "$dir")
+            
+            if [[ "$owner" != "media" ]] || [[ "$group" != "media" ]] || [[ "$perms" != "2775" ]]; then
+                echo "ERROR: $dir has incorrect ownership/permissions ($owner:$group, $perms)"
+                all_valid=false
+            fi
+        fi
+    done
+    
+    [[ "$all_valid" == true ]]
 }
 
 # Validate personal shares accessible
 validate_personal_shares() {
-    smbclient -L "${SERVER_IP}" -N 2>/dev/null | grep -q "${ADMIN_USER}" && \
-    smbclient -L "${SERVER_IP}" -N 2>/dev/null | grep -q "${POWER_USER}" && \
-    smbclient -L "${SERVER_IP}" -N 2>/dev/null | grep -q "${STANDARD_USER}"
+    local all_users="$ADMIN_USER $POWER_USERS $STANDARD_USERS"
+    for user in $all_users; do
+        if ! smbclient -L "${SERVER_IP}" -N 2>/dev/null | grep -q "${user}"; then
+            echo "ERROR: Personal share missing for user: $user"
+            return 1
+        fi
+    done
+    return 0
 }
 
 # Validate Family share accessible
@@ -60,19 +83,43 @@ validate_user_scripts() {
     [[ -x /opt/homeserver/scripts/operations/user-management/list-users.sh ]]
 }
 
-# Validate Jellyfin container running
+# Validate Jellyfin container running and has media group access
 validate_jellyfin_container() {
-    docker ps --filter "name=jellyfin" --filter "status=running" --format "{{.Names}}" | grep -q "jellyfin"
+    # Check container running
+    if ! docker ps --filter "name=jellyfin" --filter "status=running" --format "{{.Names}}" | grep -q "jellyfin"; then
+        echo "ERROR: Jellyfin container not running"
+        return 1
+    fi
+    
+    # Check container has media group access
+    local media_gid=$(getent group media | cut -d: -f3)
+    if [[ -z "$media_gid" ]]; then
+        echo "ERROR: media group does not exist"
+        return 1
+    fi
+    
+    local container_groups=$(docker exec jellyfin id -G 2>/dev/null)
+    if [[ ! "$container_groups" =~ $media_gid ]]; then
+        echo "ERROR: Jellyfin container missing media group access (GID $media_gid)"
+        return 1
+    fi
+    
+    return 0
 }
 
 # Validate Jellyfin HTTPS access
 validate_jellyfin_https() {
-    curl -k -s -o /dev/null -w "%{http_code}" "https://media.${INTERNAL_SUBDOMAIN}" | grep -q "200"
+    local http_code=$(curl -k -s -o /dev/null -w "%{http_code}" "https://media.${INTERNAL_SUBDOMAIN}")
+    [[ "$http_code" == "200" ]] || [[ "$http_code" == "302" ]]
 }
 
-# Validate Jellyfin can access media
+# Validate Jellyfin can access all media folders with correct permissions
 validate_jellyfin_media_access() {
-    docker exec jellyfin ls -la /media >/dev/null 2>&1
+    # Source Jellyfin validation utilities
+    source /opt/homeserver/scripts/operations/utils/jellyfin-validation-utils.sh
+    
+    # Run comprehensive validation
+    validate_all_jellyfin_libraries
 }
 
 # Validate Jellyfin DNS record

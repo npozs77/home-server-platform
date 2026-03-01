@@ -41,32 +41,50 @@ if [[ ! -d /mnt/data/media ]]; then
     exit 3
 fi
 
-# Check media group exists, create if missing
-if ! getent group media &>/dev/null; then
-    print_info "media group does not exist, creating with GID 1002..."
+# Check media system user exists, create if missing
+if ! getent passwd media &>/dev/null; then
+    print_info "media system user does not exist, creating..."
     if [[ "$DRY_RUN" == false ]]; then
-        groupadd -g 1002 media
-        print_success "Created media group (GID 1002)"
+        # Use -g to add user to existing media group (created in Phase 2)
+        useradd -r -s /usr/sbin/nologin -g media media
+        print_success "Created media system user (no login)"
     else
-        print_info "[DRY-RUN] Would create media group (GID 1002)"
+        print_info "[DRY-RUN] Would create media system user (no login)"
     fi
+fi
+
+# Fix /mnt/data/media ownership if needed (should be media:media with setgid)
+MEDIA_DIR_OWNER=$(stat -c "%U" /mnt/data/media)
+MEDIA_DIR_GROUP=$(stat -c "%G" /mnt/data/media)
+MEDIA_DIR_PERMS=$(stat -c "%a" /mnt/data/media)
+if [[ "$MEDIA_DIR_OWNER" != "media" ]] || [[ "$MEDIA_DIR_GROUP" != "media" ]] || [[ "$MEDIA_DIR_PERMS" != "2775" ]]; then
+    print_info "Fixing /mnt/data/media ownership and permissions (currently $MEDIA_DIR_OWNER:$MEDIA_DIR_GROUP, $MEDIA_DIR_PERMS)..."
+    if [[ "$DRY_RUN" == false ]]; then
+        chown media:media /mnt/data/media
+        chmod 2775 /mnt/data/media
+        print_success "Fixed /mnt/data/media to media:media with 2775 (setgid)"
+    else
+        print_info "[DRY-RUN] Would fix /mnt/data/media to media:media with 2775 (setgid)"
+    fi
+fi
+
+# Check media group exists (created automatically with useradd)
+if ! getent group media &>/dev/null; then
+    print_error "media group does not exist (should be created with media user)"
+    exit 3
 fi
 
 # Get media group GID
 MEDIA_GID=$(getent group media | cut -d: -f3)
 print_info "media group GID: $MEDIA_GID"
 
-# Validate GID is 1002
-if [[ "$MEDIA_GID" != "1002" ]]; then
-    print_error "media group GID is $MEDIA_GID, expected 1002"
-    exit 3
-fi
-
-# Define subdirectories to create
+# Define subdirectories to create (with setgid bit for group inheritance)
 declare -A MEDIA_DIRS=(
-    ["/mnt/data/media/Movies"]="755:root:media"
-    ["/mnt/data/media/TV Shows"]="755:root:media"
-    ["/mnt/data/media/Music"]="755:root:media"
+    ["/mnt/data/media/Movies"]="2775:media:media"
+    ["/mnt/data/media/TV Shows"]="2775:media:media"
+    ["/mnt/data/media/Music"]="2775:media:media"
+    ["/mnt/data/media/Photos"]="2775:media:media"
+    ["/mnt/data/media/HomeVideos"]="2775:media:media"
 )
 
 # Check idempotency
@@ -94,6 +112,23 @@ if [[ "$all_exist" == true ]]; then
                 chown "$owner:$group" "$dir"
             fi
         done
+        
+        # Also fix any other subdirectories in /mnt/data/media/
+        print_info "Checking for additional media subdirectories..."
+        for dir in /mnt/data/media/*/; do
+            if [[ -d "$dir" ]]; then
+                current_perms=$(stat -c "%a" "$dir")
+                current_owner=$(stat -c "%U" "$dir")
+                current_group=$(stat -c "%G" "$dir")
+                
+                if [[ "$current_perms" != "2775" ]] || [[ "$current_owner" != "media" ]] || [[ "$current_group" != "media" ]]; then
+                    print_info "Fixing permissions for $dir"
+                    chmod 2775 "$dir"
+                    chown media:media "$dir"
+                fi
+            fi
+        done
+        
         print_success "All media subdirectories verified"
     fi
     exit 0
