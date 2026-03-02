@@ -1,0 +1,46 @@
+# Caddy Reverse Proxy Configuration
+# This file is generated during Phase 2 deployment and updated as services are added
+# Location on server: /opt/homeserver/configs/caddy/Caddyfile
+
+# Global options
+{
+    email admin@example.com
+    local_certs
+}
+
+# Test service (for Phase 2 validation)
+test.home.example.com {
+    reverse_proxy test-service:80
+    tls internal
+    log {
+        output file /var/log/caddy/test-access.log
+    }
+}
+
+# Pi-hole DNS Admin (Phase 2)
+pihole.home.example.com {
+    reverse_proxy SERVER_IP:8080
+    tls internal
+    log {
+        output file /var/log/caddy/pihole-access.log
+    }
+}
+
+# Netdata Monitoring (Phase 2)
+monitor.home.example.com {
+    reverse_proxy netdata:19999
+    tls internal
+    log {
+        output file /var/log/caddy/monitor-access.log
+    }
+}
+
+# Jellyfin Media Streaming Service (Phase 3)
+media.home.example.com {
+    redir / /web/ 302
+    reverse_proxy jellyfin:8096
+    tls internal
+    log {
+        output file /var/log/caddy/media-access.log
+    }
+}

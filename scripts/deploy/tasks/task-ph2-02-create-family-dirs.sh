@@ -47,22 +47,31 @@ for dir in Documents Photos Videos Projects; do
 done
 
 if [[ "$DIRS_EXIST" == true ]]; then
-    print_info "Family subdirectories already exist - fixing permissions if needed"
-    # Fix permissions even if dirs exist
-    chmod 775 /mnt/data/family/Documents && chown root:family /mnt/data/family/Documents
-    chmod 770 /mnt/data/family/Photos && chown root:family /mnt/data/family/Photos
-    chmod 775 /mnt/data/family/Videos && chown root:family /mnt/data/family/Videos
-    chmod 775 /mnt/data/family/Projects && chown root:family /mnt/data/family/Projects
-    print_success "Permissions verified/fixed"
+    print_info "Family subdirectories already exist - fixing permissions for ALL folders..."
+    # Fix permissions for all folders in /mnt/data/family/ (including manually created ones)
+    for dir in /mnt/data/family/*/; do
+        if [[ -d "$dir" ]]; then
+            dirname=$(basename "$dir")
+            # Determine correct permissions based on folder name
+            if [[ "$dirname" == "Photos" ]] || [[ "$dirname" == "Music" ]]; then
+                chmod 2770 "$dir" && chown root:family "$dir"
+                print_success "Fixed $dirname/ (2770, root:family, setgid)"
+            else
+                chmod 2775 "$dir" && chown root:family "$dir"
+                print_success "Fixed $dirname/ (2775, root:family, setgid)"
+            fi
+        fi
+    done
+    print_success "All family folders verified/fixed (setgid bit applied)"
     exit 0
 fi
 
 # Execute task
 if [[ "$DRY_RUN" == true ]]; then
-    print_info "[DRY-RUN] Would create /mnt/data/family/Documents/ (775, root:family)"
-    print_info "[DRY-RUN] Would create /mnt/data/family/Photos/ (770, root:family)"
-    print_info "[DRY-RUN] Would create /mnt/data/family/Videos/ (770, root:family)"
-    print_info "[DRY-RUN] Would create /mnt/data/family/Projects/ (775, root:family)"
+    print_info "[DRY-RUN] Would create /mnt/data/family/Documents/ (2775, root:family, setgid)"
+    print_info "[DRY-RUN] Would create /mnt/data/family/Photos/ (2770, root:family, setgid)"
+    print_info "[DRY-RUN] Would create /mnt/data/family/Videos/ (2770, root:family, setgid)"
+    print_info "[DRY-RUN] Would create /mnt/data/family/Projects/ (2775, root:family, setgid)"
     exit 0
 fi
 
@@ -77,36 +86,36 @@ if [[ -d /mnt/data/family/Documents ]]; then
 else
     mkdir -p /mnt/data/family/Documents
 fi
-chmod 775 /mnt/data/family/Documents
+chmod 2775 /mnt/data/family/Documents
 chown root:family /mnt/data/family/Documents
-print_success "Created /mnt/data/family/Documents/ (775, root:family)"
+print_success "Created /mnt/data/family/Documents/ (2775, root:family, setgid)"
 
 if [[ -d /mnt/data/family/Photos ]]; then
     print_info "/mnt/data/family/Photos/ already exists"
 else
     mkdir -p /mnt/data/family/Photos
 fi
-chmod 770 /mnt/data/family/Photos
+chmod 2770 /mnt/data/family/Photos
 chown root:family /mnt/data/family/Photos
-print_success "Created /mnt/data/family/Photos/ (770, root:family)"
+print_success "Created /mnt/data/family/Photos/ (2770, root:family, setgid)"
 
 if [[ -d /mnt/data/family/Videos ]]; then
     print_info "/mnt/data/family/Videos/ already exists"
 else
     mkdir -p /mnt/data/family/Videos
 fi
-chmod 770 /mnt/data/family/Videos
+chmod 2770 /mnt/data/family/Videos
 chown root:family /mnt/data/family/Videos
-print_success "Created /mnt/data/family/Videos/ (770, root:family)"
+print_success "Created /mnt/data/family/Videos/ (2770, root:family, setgid)"
 
 if [[ -d /mnt/data/family/Projects ]]; then
     print_info "/mnt/data/family/Projects/ already exists"
 else
     mkdir -p /mnt/data/family/Projects
 fi
-chmod 775 /mnt/data/family/Projects
+chmod 2775 /mnt/data/family/Projects
 chown root:family /mnt/data/family/Projects
-print_success "Created /mnt/data/family/Projects/ (775, root:family)"
+print_success "Created /mnt/data/family/Projects/ (2775, root:family, setgid)"
 
 print_success "Task 2.2 complete"
 exit 0

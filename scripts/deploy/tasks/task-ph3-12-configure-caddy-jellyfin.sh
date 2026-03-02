@@ -55,8 +55,8 @@ if ! docker ps --format '{{.Names}}' | grep -q '^jellyfin$'; then
 fi
 
 # Check Caddyfile exists
-if [[ ! -f configs/caddy/Caddyfile ]]; then
-    print_error "configs/caddy/Caddyfile does not exist (should be created in Phase 2)"
+if [[ ! -f /opt/homeserver/configs/caddy/Caddyfile ]]; then
+    print_error "/opt/homeserver/configs/caddy/Caddyfile does not exist (should be created in Phase 2)"
     exit 3
 fi
 
@@ -64,7 +64,7 @@ fi
 JELLYFIN_DOMAIN="media.${INTERNAL_SUBDOMAIN}"
 
 # Check idempotency
-if grep -q "^${JELLYFIN_DOMAIN}" configs/caddy/Caddyfile; then
+if grep -q "^${JELLYFIN_DOMAIN}" /opt/homeserver/configs/caddy/Caddyfile; then
     print_info "Jellyfin entry already exists in Caddyfile"
     exit 0
 fi
@@ -78,13 +78,14 @@ else
     print_info "Adding Jellyfin entry to Caddyfile..."
     
     # Backup Caddyfile
-    cp configs/caddy/Caddyfile configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S)
+    cp /opt/homeserver/configs/caddy/Caddyfile /opt/homeserver/configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S)
     
     # Add Jellyfin entry
-    cat >> configs/caddy/Caddyfile << EOFCADDY
+    cat >> /opt/homeserver/configs/caddy/Caddyfile << EOFCADDY
 
 # Jellyfin Media Streaming Service
 ${JELLYFIN_DOMAIN} {
+    redir / /web/ 302
     reverse_proxy jellyfin:8096
     tls internal
     log {
@@ -102,7 +103,7 @@ EOFCADDY
     else
         print_error "Caddyfile syntax invalid"
         print_error "Restoring backup..."
-        mv configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S) configs/caddy/Caddyfile
+        mv /opt/homeserver/configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S) /opt/homeserver/configs/caddy/Caddyfile
         exit 1
     fi
     
@@ -113,7 +114,7 @@ EOFCADDY
     else
         print_error "Failed to reload Caddy configuration"
         print_error "Restoring backup..."
-        mv configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S) configs/caddy/Caddyfile
+        mv /opt/homeserver/configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S) /opt/homeserver/configs/caddy/Caddyfile
         docker exec caddy caddy reload --config /etc/caddy/Caddyfile
         exit 1
     fi

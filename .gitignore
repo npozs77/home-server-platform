@@ -2,6 +2,9 @@
 *.key
 *.pem
 *.env
+!*.yaml.example
+!*.yml.example
+!*.env.example
 .env
 *.secret
 *.yaml

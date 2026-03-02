@@ -20,12 +20,31 @@ validate_personal_folders() {
     return 0
 }
 
-# Validate family folders exist
+# Validate family folders exist with correct ownership and setgid bit
 validate_family_folders() {
-    [[ -d "${DATA_MOUNT}/family/Documents" ]] && \
-    [[ -d "${DATA_MOUNT}/family/Photos" ]] && \
-    [[ -d "${DATA_MOUNT}/family/Videos" ]] && \
-    [[ -d "${DATA_MOUNT}/family/Projects" ]]
+    # Check all subdirectories in /mnt/data/family/
+    local all_valid=true
+    for dir in ${DATA_MOUNT}/family/*/; do
+        if [[ -d "$dir" ]]; then
+            local owner=$(stat -c "%U" "$dir")
+            local group=$(stat -c "%G" "$dir")
+            local perms=$(stat -c "%a" "$dir")
+            
+            # Family folders should be root:family with setgid bit (2770 or 2775)
+            if [[ "$owner" != "root" ]] || [[ "$group" != "family" ]]; then
+                echo "ERROR: $dir has incorrect ownership ($owner:$group, expected root:family)"
+                all_valid=false
+            fi
+            
+            # Check setgid bit is set (first digit should be 2)
+            if [[ ! "$perms" =~ ^2[0-9]{3}$ ]]; then
+                echo "ERROR: $dir missing setgid bit (perms: $perms, expected 2xxx)"
+                all_valid=false
+            fi
+        fi
+    done
+    
+    [[ "$all_valid" == true ]]
 }
 
 # Validate media folders exist with correct ownership

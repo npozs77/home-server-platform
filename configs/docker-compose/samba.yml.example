@@ -1,0 +1,25 @@
+services:
+  samba:
+    image: dperson/samba:latest
+    container_name: samba
+    restart: unless-stopped
+    ports:
+      - "139:139"
+      - "445:445"
+    volumes:
+      - /mnt/data:/mnt/data
+      - /opt/homeserver/configs/samba/smb.conf:/etc/samba/smb.conf:ro
+      - /mnt/data/services/samba/lib:/var/lib/samba:rw  # Persist user database
+      - /etc/passwd:/etc/passwd:ro  # Map host users to container
+      - /etc/group:/etc/group:ro    # Map host groups to container
+    environment:
+      TZ: "Europe/Amsterdam"
+      WORKGROUP: "WORKGROUP"
+      RECYCLE: "true"
+      PGID: "1001"  # family group GID - allows Samba to access user:family directories
+    networks:
+      - homeserver
+
+networks:
+  homeserver:
+    external: true

@@ -15,6 +15,9 @@ Configuration is organized by purpose for clarity and to avoid duplication.
 | `configs/foundation.env` | System-level configuration (timezone, hostname, network) | All phases |
 | `configs/services.env` | Service-specific configuration (domains, SMTP, DNS) | Phase 02+ |
 | `configs/secrets.env` | Sensitive data (passphrases, API keys) | All phases |
+| `configs/caddy/Caddyfile` | Caddy reverse proxy configuration (generated on server) | Phase 02+ |
+| `configs/docker-compose/*.yml` | Docker Compose service definitions (generated on server) | Phase 02+ |
+| `configs/samba/smb.conf` | Samba file sharing configuration (generated on server) | Phase 03+ |
 
 ## Foundation Configuration (foundation.env)
 
@@ -363,6 +366,10 @@ sudo cp /opt/homeserver/configs/secrets.env \
 
 ## Related Documentation
 
+- Example Configuration Files:
+  - `configs/caddy/Caddyfile.example` - Caddy reverse proxy configuration
+  - `configs/samba/smb.conf.example` - Samba file sharing configuration
+  - `configs/docker-compose/samba.yml.example` - Samba Docker Compose
 - Deployment Manuals: 
   - `docs/deployment_manuals/phase1-foundation.md`
   - `docs/deployment_manuals/phase2-infrastructure.md`

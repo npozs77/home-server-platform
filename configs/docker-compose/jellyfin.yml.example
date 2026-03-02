@@ -1,0 +1,28 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "8096:8096"  # HTTP web interface (internal only)
+    volumes:
+      - /mnt/data/services/jellyfin/config:/config:rw  # Jellyfin configuration and metadata
+      - /mnt/data/services/jellyfin/cache:/cache:rw    # Jellyfin cache
+      - /mnt/data/media:/media:ro                      # Media library (read-only)
+    environment:
+      TZ: "Europe/Amsterdam"
+      JELLYFIN_PublishedServerUrl: "https://media.home.example.com"  # Public URL for clients
+    group_add:
+      - "1002"  # media group GID - allows Jellyfin to read media files
+    networks:
+      - homeserver
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  homeserver:
+    external: true

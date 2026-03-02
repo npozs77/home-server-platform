@@ -122,6 +122,8 @@ else
    create mask = 0770
    directory mask = 0770
    force group = family
+   force create mode = 0770
+   force directory mode = 0770
    vfs objects = recycle
    recycle:repository = .recycle/%U
 
