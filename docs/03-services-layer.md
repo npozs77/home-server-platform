@@ -1,0 +1,35 @@
+# Services Layer
+
+**Status**: Placeholder - To be created during Phase 03+
+
+## Purpose
+
+This document will describe the AS-IS services and applications configuration after Phase 03+ deployment.
+
+## Planned Content
+
+**Phase 03+ Components**:
+- Media services (Jellyfin)
+- Photo services (Immich, PhotoPrism)
+- Home automation (Home Assistant)
+- Wiki (Wiki.js)
+- Shared services (SMTP relay, etc.)
+- Service-specific configurations
+- User access patterns
+- Auto-start/idle-stop configuration
+
+## When to Create
+
+During Phase 03+ deployment, after application services are configured and validated.
+
+## Related Documents
+
+- `.kiro/specs/03-core-services/design.md` - Phase 03 design decisions
+- `.kiro/specs/04-applications/design.md` - Phase 04 design decisions
+- `docs/deployment_manuals/phase3-services.md` - Phase 03 deployment procedures
+- `docs/02-infrastructure-layer.md` - Infrastructure layer (Phase 02)
+
+---
+
+**Last Updated**: 2025-02-02  
+**Status**: Placeholder
