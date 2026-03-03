@@ -150,7 +150,7 @@ execute_create_services_yaml() {
 
 execute_deploy_caddy() {
     load_config || { print_error "Configuration not loaded"; return 1; }
-    export DOMAIN INTERNAL_SUBDOMAIN DATA_MOUNT
+    export DOMAIN INTERNAL_SUBDOMAIN DATA_MOUNT ADMIN_EMAIL SERVER_IP
     /opt/homeserver/scripts/deploy/tasks/task-ph2-05-deploy-caddy.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 

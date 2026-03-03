@@ -110,6 +110,18 @@ validate_jellyfin_container() {
         return 1
     fi
     
+    # Check health status
+    local health_status=$(docker inspect jellyfin --format='{{.State.Health.Status}}' 2>/dev/null || echo "no healthcheck")
+    if [[ "$health_status" == "healthy" ]]; then
+        echo "OK: Jellyfin is healthy"
+    elif [[ "$health_status" == "starting" ]]; then
+        echo "INFO: Jellyfin health check is starting"
+    elif [[ "$health_status" == "no healthcheck" ]]; then
+        echo "WARNING: Jellyfin has no HEALTHCHECK configured"
+    else
+        echo "WARNING: Jellyfin health status: $health_status"
+    fi
+    
     # Check container has media group access
     local media_gid=$(getent group media | cut -d: -f3)
     if [[ -z "$media_gid" ]]; then

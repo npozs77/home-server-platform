@@ -121,6 +121,19 @@ validate_logrotate_msmtp() {
 validate_dns_service() {
     if docker ps | grep -q pihole; then
         print_success "Pi-hole container running"
+        
+        # Check health status
+        HEALTH_STATUS=$(docker inspect pihole --format='{{.State.Health.Status}}' 2>/dev/null || echo "no healthcheck")
+        if [[ "$HEALTH_STATUS" == "healthy" ]]; then
+            print_success "Pi-hole is healthy"
+        elif [[ "$HEALTH_STATUS" == "starting" ]]; then
+            print_info "Pi-hole health check is starting"
+        elif [[ "$HEALTH_STATUS" == "no healthcheck" ]]; then
+            print_warning "Pi-hole has no HEALTHCHECK configured"
+        else
+            print_warning "Pi-hole health status: $HEALTH_STATUS"
+        fi
+        
         return 0
     else
         print_info "Pi-hole not yet deployed (will be deployed in Task 5.1)"
@@ -163,6 +176,19 @@ validate_external_dns() {
 validate_caddy_service() {
     if docker ps | grep -q caddy; then
         print_success "Caddy container running"
+        
+        # Check health status
+        HEALTH_STATUS=$(docker inspect caddy --format='{{.State.Health.Status}}' 2>/dev/null || echo "no healthcheck")
+        if [[ "$HEALTH_STATUS" == "healthy" ]]; then
+            print_success "Caddy is healthy"
+        elif [[ "$HEALTH_STATUS" == "starting" ]]; then
+            print_info "Caddy health check is starting"
+        elif [[ "$HEALTH_STATUS" == "no healthcheck" ]]; then
+            print_warning "Caddy has no HEALTHCHECK configured"
+        else
+            print_warning "Caddy health status: $HEALTH_STATUS"
+        fi
+        
         return 0
     else
         print_info "Caddy not yet deployed (will be deployed in Task 4.1)"

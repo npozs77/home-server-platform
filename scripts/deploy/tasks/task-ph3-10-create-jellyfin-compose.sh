@@ -111,6 +111,12 @@ services:
       - "${MEDIA_GID}"  # media group - allows container to read /mnt/data/media/
     networks:
       - homeserver
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     # Optional: Hardware acceleration (Intel Quick Sync)
     # Uncomment if Intel GPU available:
     # devices:

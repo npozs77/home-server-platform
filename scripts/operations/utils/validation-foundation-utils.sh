@@ -22,6 +22,27 @@ source "${SCRIPT_DIR}/output-utils.sh"
 validate_ssh_hardening() {
     local status="PASS"
     
+    if grep -q "^Port 22" /etc/ssh/sshd_config; then
+        print_success "Port 22 uncommented"
+    else
+        print_error "Port 22 NOT uncommented"
+        status="FAIL"
+    fi
+    
+    if grep -q "^UseDNS no" /etc/ssh/sshd_config; then
+        print_success "UseDNS disabled (prevents DNS delays)"
+    else
+        print_error "UseDNS NOT disabled"
+        status="FAIL"
+    fi
+    
+    if grep -q "^GSSAPIAuthentication no" /etc/ssh/sshd_config; then
+        print_success "GSSAPIAuthentication disabled (prevents auth delays)"
+    else
+        print_error "GSSAPIAuthentication NOT disabled"
+        status="FAIL"
+    fi
+    
     if grep -q "^PasswordAuthentication no" /etc/ssh/sshd_config; then
         print_success "Password authentication disabled"
     else

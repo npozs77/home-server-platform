@@ -114,6 +114,11 @@ docker run -d \
     -v /opt/homeserver/configs/caddy/data:/data \
     -v /opt/homeserver/configs/caddy/config:/config \
     -v /var/log/caddy:/var/log/caddy \
+    --health-cmd "curl -f http://localhost:80 || exit 1" \
+    --health-interval 30s \
+    --health-timeout 10s \
+    --health-retries 3 \
+    --health-start-period 30s \
     caddy:alpine
 
 print_success "Caddy container deployed"

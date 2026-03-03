@@ -29,16 +29,22 @@ DRY_RUN=false
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
 
 # Check if already completed (idempotency)
-if grep -q "^PasswordAuthentication no" /etc/ssh/sshd_config 2>/dev/null && \
+if grep -q "^Port 22" /etc/ssh/sshd_config 2>/dev/null && \
+   grep -q "^UseDNS no" /etc/ssh/sshd_config 2>/dev/null && \
+   grep -q "^GSSAPIAuthentication no" /etc/ssh/sshd_config 2>/dev/null && \
+   grep -q "^PasswordAuthentication no" /etc/ssh/sshd_config 2>/dev/null && \
    grep -q "^PubkeyAuthentication yes" /etc/ssh/sshd_config 2>/dev/null && \
    grep -q "^PermitRootLogin no" /etc/ssh/sshd_config 2>/dev/null; then
-    print_info "SSH already hardened - skip"
+    print_info "SSH already hardened - skipping"
     exit 0
 fi
 
 # Execute task
 if [[ "$DRY_RUN" == true ]]; then
     print_info "[DRY-RUN] Would backup SSH config"
+    print_info "[DRY-RUN] Would uncomment Port 22"
+    print_info "[DRY-RUN] Would set UseDNS no"
+    print_info "[DRY-RUN] Would set GSSAPIAuthentication no"
     print_info "[DRY-RUN] Would set PasswordAuthentication no"
     print_info "[DRY-RUN] Would set PubkeyAuthentication yes"
     print_info "[DRY-RUN] Would set PermitRootLogin no"
@@ -58,6 +64,19 @@ fi
 
 # Update SSH config
 print_info "Updating SSH configuration..."
+
+# Uncomment Port 22 (prevents SSH from listening on unexpected ports)
+sed -i 's/^#*Port 22/Port 22/' /etc/ssh/sshd_config
+
+# Disable DNS lookups (prevents reverse DNS delays during DNS instability)
+sed -i 's/^#*UseDNS.*/UseDNS no/' /etc/ssh/sshd_config
+grep -q "^UseDNS" /etc/ssh/sshd_config || echo "UseDNS no" >> /etc/ssh/sshd_config
+
+# Disable GSSAPI authentication (prevents authentication delays)
+sed -i 's/^#*GSSAPIAuthentication.*/GSSAPIAuthentication no/' /etc/ssh/sshd_config
+grep -q "^GSSAPIAuthentication" /etc/ssh/sshd_config || echo "GSSAPIAuthentication no" >> /etc/ssh/sshd_config
+
+# Standard hardening
 sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
 sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
