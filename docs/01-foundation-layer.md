@@ -35,10 +35,21 @@ This document describes the AS-IS foundation layer configuration after Phase 01 
 
 **SSH Server Configuration** (`/etc/ssh/sshd_config`):
 ```
+Port 22
+UseDNS no
+GSSAPIAuthentication no
 PasswordAuthentication no
 PubkeyAuthentication yes
 PermitRootLogin no
+ClientAliveInterval 300
+ClientAliveCountMax 2
 ```
+
+**Configuration Notes**:
+- `Port 22` uncommented (prevents SSH connection delays)
+- `UseDNS no` prevents DNS lookup delays on SSH connections
+- `GSSAPIAuthentication no` prevents GSSAPI authentication delays
+- `ClientAliveInterval 300` sets 5-minute keepalive (1 hour idle timeout with CountMax=2)
 
 **SSH Keys**:
 - **Type**: Ed25519
@@ -509,3 +520,52 @@ sudo systemctl status unattended-upgrades
 **Last Updated**: [Date]
 **Status**: Deployed (Phase 01 Complete)
 **Next Steps**: Proceed to Phase 02 (Infrastructure Services Layer)
+
+
+## Automated Monitoring
+
+### Container Health Monitoring
+
+**Cron job**: Monitors Docker container health every 5 minutes
+
+**Configuration**:
+```bash
+crontab -l
+# Should show:
+*/5 * * * * /opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+```
+
+**Add cron job** (if not present):
+```bash
+crontab -e
+# Add line:
+*/5 * * * * /opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+```
+
+**What it monitors**:
+- Pi-hole container health
+- Caddy container health
+- Jellyfin container health
+
+**Alert behavior**:
+- Sends email to ADMIN_EMAIL if any container unhealthy
+- Uses msmtp for email delivery
+- No output if all containers healthy
+
+**Manual test**:
+```bash
+/opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+# No output = all healthy
+# Email sent = container unhealthy
+```
+
+**Verify cron is running**:
+```bash
+systemctl status cron
+# Should show: active (running)
+
+# Check cron logs
+grep CRON /var/log/syslog | tail -20
+```
+
+**Reference**: See docs/02-infrastructure-layer.md for health monitoring details.

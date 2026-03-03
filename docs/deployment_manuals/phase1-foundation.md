@@ -754,10 +754,21 @@ sudo cryptsetup luksClose test_unlock
 3. **Update settings**
    ```
    # Find and update these lines:
+   Port 22
+   UseDNS no
+   GSSAPIAuthentication no
    PasswordAuthentication no
    PubkeyAuthentication yes
    PermitRootLogin no
+   ClientAliveInterval 300
+   ClientAliveCountMax 2
    ```
+
+   **Note**: 
+   - `Port 22` must be uncommented (prevents SSH connection delays)
+   - `UseDNS no` prevents DNS lookup delays on SSH connections
+   - `GSSAPIAuthentication no` prevents GSSAPI authentication delays
+   - `ClientAliveInterval 300` sets 5-minute keepalive (1 hour idle timeout with CountMax=2)
 
 4. **Test config syntax**
    ```bash

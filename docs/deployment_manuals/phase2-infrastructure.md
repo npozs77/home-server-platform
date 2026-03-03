@@ -637,8 +637,73 @@ Pi-hole web interface password: ********
 **Solution**:
 1. Check Pi-hole container running: `docker ps | grep pihole`
 2. Check DNS records: `docker exec pihole cat /etc/pihole/custom.list`
-3. Restart Pi-hole DNS: `docker exec pihole pihole restartdns`
+3. Restart Pi-hole DNS: `docker exec pihole pihole reloaddns`
 4. Test DNS directly: `nslookup test.home.mydomain.com 192.168.1.2`
+
+### Issue: systemd-resolved interfering with DNS
+
+**Symptoms**: 
+- /etc/resolv.conf points to 127.0.0.53 instead of 127.0.0.1
+- DNS queries fail or timeout
+- Pi-hole not receiving DNS queries
+
+**Solution**:
+1. Stop and disable systemd-resolved:
+   ```bash
+   sudo systemctl stop systemd-resolved
+   sudo systemctl disable systemd-resolved
+   ```
+
+2. Remove symlink and create static resolv.conf:
+   ```bash
+   sudo rm /etc/resolv.conf
+   echo "nameserver 127.0.0.1" | sudo tee /etc/resolv.conf
+   ```
+
+3. Make resolv.conf immutable:
+   ```bash
+   sudo chattr +i /etc/resolv.conf
+   ```
+
+4. Verify configuration:
+   ```bash
+   cat /etc/resolv.conf
+   # Should show: nameserver 127.0.0.1
+   
+   systemctl status systemd-resolved
+   # Should show: inactive (dead)
+   ```
+
+5. Restart containers after DNS changes:
+   ```bash
+   docker restart pihole
+   sleep 30
+   docker restart caddy
+   docker restart jellyfin
+   ```
+
+6. Test DNS resolution:
+   ```bash
+   dig @127.0.0.1 google.com
+   # Should return IP address
+   ```
+
+**Reference**: See docs/13-container-restart-procedure.md for detailed container restart procedures.
+
+### Issue: Network unreachability after DNS changes
+
+**Symptoms**:
+- Ping to server fails or has high latency
+- SSH connection takes 30+ seconds
+- HTTPS services unresponsive
+
+**Solution**:
+1. Verify /etc/resolv.conf configuration (see above)
+2. Restart Pi-hole container
+3. Restart dependent containers (Caddy, Jellyfin)
+4. Test external access from laptop/phone
+
+**Reference**: See docs/12-runbooks.md for complete network unreachability troubleshooting.
 
 ### Issue: Browser shows certificate warning
 

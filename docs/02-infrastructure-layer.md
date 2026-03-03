@@ -110,11 +110,20 @@ Then reload: `docker exec caddy caddy reload --config /etc/caddy/Caddyfile`
 **Check running containers**:
 ```bash
 docker ps
+# Look for (healthy) status
+```
+
+**Check container health**:
+```bash
+docker inspect <container> --format='{{.State.Health.Status}}'
+# Should return: healthy
 ```
 
 **Restart a service**:
 ```bash
 docker restart <container-name>
+# Wait 30 seconds for health check
+docker ps | grep <container-name>  # Verify (healthy)
 ```
 
 **View container logs**:
@@ -128,6 +137,49 @@ docker logs <container-name> -f  # follow mode
 docker stop <container-name>
 docker rm <container-name>
 # Then run docker run command from deployment script
+```
+
+**Pi-hole deployment command** (for reference):
+```bash
+docker run -d \
+    --name pihole \
+    --restart unless-stopped \
+    --network host \
+    -e TZ="America/New_York" \
+    -e WEBPASSWORD="$PIHOLE_PASSWORD" \
+    -e DNSMASQ_LISTENING="all" \
+    -e DNS1="8.8.8.8" \
+    -e DNS2="1.1.1.1" \
+    -e FTLCONF_webserver_api=1 \
+    -e FTLCONF_webserver_port=8888 \
+    -v /opt/homeserver/configs/pihole/etc-pihole:/etc/pihole \
+    -v /opt/homeserver/configs/pihole/etc-dnsmasq.d:/etc/dnsmasq.d \
+    --health-cmd "dig @127.0.0.1 google.com || exit 1" \
+    --health-interval 30s \
+    --health-timeout 10s \
+    --health-retries 3 \
+    --health-start-period 60s \
+    pihole/pihole:latest
+```
+
+**Caddy deployment command** (for reference):
+```bash
+docker run -d \
+    --name caddy \
+    --restart unless-stopped \
+    --network homeserver \
+    -p 80:80 \
+    -p 443:443 \
+    -v /opt/homeserver/configs/caddy/Caddyfile:/etc/caddy/Caddyfile:ro \
+    -v /opt/homeserver/configs/caddy/data:/data \
+    -v /opt/homeserver/configs/caddy/config:/config \
+    -v /var/log/caddy:/var/log/caddy \
+    --health-cmd "curl -f http://localhost:80 || exit 1" \
+    --health-interval 30s \
+    --health-timeout 10s \
+    --health-retries 3 \
+    --health-start-period 30s \
+    caddy:alpine
 ```
 
 ### Network Management
@@ -342,3 +394,99 @@ docker exec pihole pihole -g
 - Phase 1 deployment must include DNS port 53 rules (missing from original deployment)
 - Each service port must be explicitly allowed from LAN subnet
 - Host networking services need UFW rules for their ports
+
+
+## Health Monitoring
+
+### Container Health Checks
+
+All critical containers have HEALTHCHECK configured:
+
+**Pi-hole**:
+- Health command: `dig @127.0.0.1 google.com`
+- Tests: DNS resolution functionality
+- Interval: 30 seconds
+- Timeout: 10 seconds
+- Retries: 3
+- Start period: 60 seconds
+
+**Caddy**:
+- Health command: `curl -f http://localhost:80`
+- Tests: HTTP response on port 80
+- Interval: 30 seconds
+- Timeout: 10 seconds
+- Retries: 3
+- Start period: 30 seconds
+
+**Check container health status**:
+```bash
+docker ps
+# Look for (healthy) status
+
+docker inspect <container> --format='{{.State.Health.Status}}'
+# Returns: healthy, unhealthy, or starting
+```
+
+### Automated Health Monitoring
+
+**Monitoring script**: `/opt/homeserver/scripts/operations/monitoring/check-container-health.sh`
+
+**What it does**:
+- Checks health status of Pi-hole, Caddy, Jellyfin
+- Sends email alert if any container unhealthy
+- Runs every 5 minutes via cron
+
+**Cron configuration**:
+```bash
+crontab -l
+# Should show:
+*/5 * * * * /opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+```
+
+**Manual test**:
+```bash
+/opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+# No output if all healthy
+# Sends email if any unhealthy
+```
+
+**Email alerts**:
+- Recipient: ADMIN_EMAIL from foundation.env
+- Subject: [ALERT] Container <name> unhealthy
+- Body: Container status and timestamp
+- Delivery: via msmtp (configured in Phase 2)
+
+### Troubleshooting Unhealthy Containers
+
+**If container shows unhealthy**:
+
+1. Check detailed health status:
+   ```bash
+   docker inspect <container> --format='{{json .State.Health}}' | jq
+   ```
+
+2. Check container logs:
+   ```bash
+   docker logs <container> --tail 50
+   ```
+
+3. Test health check manually:
+   ```bash
+   # Pi-hole
+   docker exec pihole dig @127.0.0.1 google.com
+   
+   # Caddy
+   docker exec caddy curl -f http://localhost:80
+   
+   # Jellyfin
+   docker exec jellyfin curl -f http://localhost:8096/health
+   ```
+
+4. Restart container if needed:
+   ```bash
+   docker restart <container>
+   # Wait 30-60 seconds for health check
+   docker ps | grep <container>  # Verify (healthy)
+   ```
+
+**Reference**: See docs/12-runbooks.md for detailed troubleshooting procedures.

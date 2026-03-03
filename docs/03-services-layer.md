@@ -33,3 +33,37 @@ During Phase 03+ deployment, after application services are configured and valid
 
 **Last Updated**: 2025-02-02  
 **Status**: Placeholder
+
+
+## Health Monitoring
+
+### Jellyfin Health Check
+
+**Health command**: `curl -f http://localhost:8096/health`
+- Tests: API health endpoint
+- Interval: 30 seconds
+- Timeout: 10 seconds
+- Retries: 3
+- Start period: 30 seconds
+
+**Check Jellyfin health**:
+```bash
+docker ps | grep jellyfin
+# Should show: (healthy)
+
+docker inspect jellyfin --format='{{.State.Health.Status}}'
+# Should return: healthy
+```
+
+**Manual health test**:
+```bash
+docker exec jellyfin curl -f http://localhost:8096/health
+# Should return: HTTP 200 OK
+```
+
+### Automated Monitoring
+
+Jellyfin is monitored by `/opt/homeserver/scripts/operations/monitoring/check-container-health.sh`:
+- Runs every 5 minutes via cron
+- Sends email alert if unhealthy
+- Reference: docs/02-infrastructure-layer.md for monitoring details

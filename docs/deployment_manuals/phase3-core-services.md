@@ -561,9 +561,16 @@ Results: 14/14 checks passed
 
 **Cannot access https://media.home.mydomain.com**:
 - Check Jellyfin container: `docker ps | grep jellyfin`
+- Check container health: `docker inspect jellyfin --format='{{.State.Health.Status}}'` (should show "healthy")
 - Check Caddy routing: `grep -A 5 "media.home.mydomain.com" /opt/homeserver/configs/caddy/Caddyfile`
 - Check DNS: `nslookup media.home.mydomain.com 192.168.1.2`
 - Check logs: `docker logs jellyfin`
+
+**Container shows unhealthy status**:
+- Check health check: `docker inspect jellyfin --format='{{.State.Health}}'`
+- Test health check manually: `docker exec jellyfin curl -f http://localhost:8096/health || echo "Health check failed"`
+- Restart container: `docker restart jellyfin` (wait 30 seconds for health check)
+- Check logs for errors: `docker logs jellyfin | grep -i error`
 
 **Libraries empty**:
 - Check media mounted: `docker exec jellyfin ls -la /media`
@@ -575,6 +582,36 @@ Results: 14/14 checks passed
 - Try lower quality setting
 - Check transcoding enabled: Dashboard → Playback → Transcoding
 - Check disk space: `df -h /mnt/data/services/jellyfin/cache`
+
+### Container Health Monitoring
+
+All critical containers (Pi-hole, Caddy, Jellyfin) have HEALTHCHECK configured:
+
+**Check container health status**:
+```bash
+docker ps
+# Look for (healthy) status next to container name
+```
+
+**View detailed health information**:
+```bash
+docker inspect <container> --format='{{json .State.Health}}' | jq
+```
+
+**Automated health monitoring**:
+- Script: `/opt/homeserver/scripts/operations/monitoring/check-container-health.sh`
+- Runs every 5 minutes via cron
+- Sends email alert if container unhealthy
+- Reference: docs/12-runbooks.md for troubleshooting
+
+**HEALTHCHECK configuration**:
+- Pi-hole: `dig @127.0.0.1 google.com` (tests DNS resolution)
+- Caddy: `curl -f http://localhost:80` (tests HTTP response)
+- Jellyfin: `curl -f http://localhost:8096/health` (tests API health endpoint)
+- Interval: 30 seconds
+- Timeout: 10 seconds
+- Retries: 3
+- Start period: 30-60 seconds (allows container initialization)
 
 ## Next Steps
 

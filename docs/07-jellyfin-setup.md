@@ -201,6 +201,47 @@ Transcoding converts media to formats compatible with client devices.
 
 ---
 
+## Container Deployment Reference
+
+For reference, the Jellyfin container deployment command (from Phase 3 deployment script):
+
+```bash
+docker run -d \
+    --name jellyfin \
+    --restart unless-stopped \
+    --network homeserver \
+    -p 8096:8096 \
+    -e TZ="America/New_York" \
+    -v /mnt/data/services/jellyfin/config:/config \
+    -v /mnt/data/services/jellyfin/cache:/cache \
+    -v /mnt/data/media:/media:ro \
+    --group-add 1002 \
+    --health-cmd "curl -f http://localhost:8096/health || exit 1" \
+    --health-interval 30s \
+    --health-timeout 10s \
+    --health-retries 3 \
+    --health-start-period 30s \
+    jellyfin/jellyfin:latest
+```
+
+**Configuration Notes**:
+- `--network homeserver`: Connects to custom Docker network for Caddy reverse proxy
+- `--group-add 1002`: Adds media group (GID 1002) for read access to /mnt/data/media/
+- `/media:ro`: Mounts media directory as read-only
+- `--health-cmd`: Tests API health endpoint every 30 seconds
+- Port 8096: Internal HTTP port (proxied via Caddy, not exposed to LAN)
+
+**Check container health**:
+```bash
+docker ps | grep jellyfin
+# Should show: (healthy)
+
+docker inspect jellyfin --format='{{.State.Health.Status}}'
+# Should return: healthy
+```
+
+---
+
 ## Troubleshooting
 
 ### Media Library Not Scanning
