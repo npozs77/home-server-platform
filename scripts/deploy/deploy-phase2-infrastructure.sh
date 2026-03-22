@@ -211,7 +211,7 @@ validate_all() {
         "Data Structure:validate_data_structure"
         "Family Directories:validate_family_subdirectories"
         "Backup Directories:validate_backup_subdirectories"
-        "Services YAML:validate_services_yaml"
+        "Compose Files:validate_services_yaml"
         "Caddy Service:validate_caddy_service"
         "Caddy HTTPS:validate_caddy_https"
         "CA Certificate:validate_certificate_trust"

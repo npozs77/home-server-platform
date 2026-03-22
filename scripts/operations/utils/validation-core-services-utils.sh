@@ -140,7 +140,9 @@ validate_jellyfin_container() {
 
 # Validate Jellyfin HTTPS access
 validate_jellyfin_https() {
-    local http_code=$(curl -k -s -o /dev/null -w "%{http_code}" "https://media.${INTERNAL_SUBDOMAIN}")
+    # Use --resolve to bypass system DNS (resolv.conf may not point to Pi-hole)
+    local http_code
+    http_code=$(curl -k -s -o /dev/null -w "%{http_code}" --resolve "media.${INTERNAL_SUBDOMAIN}:443:${SERVER_IP}" "https://media.${INTERNAL_SUBDOMAIN}" 2>/dev/null) || true
     [[ "$http_code" == "200" ]] || [[ "$http_code" == "302" ]]
 }
 

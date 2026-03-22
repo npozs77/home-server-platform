@@ -30,9 +30,22 @@ Data storage organization on `/mnt/data/` (LUKS encrypted partition). All user d
 │   ├── incremental/          # Daily incremental backups (700, root:root)
 │   └── offsite-sync/         # Weekly off-site sync staging (700, root:root)
 └── services/                 # Service persistent data (755, root:root)
-    └── jellyfin/             # Jellyfin persistent data (755, root:root)
-        ├── config/           # Jellyfin configuration (755, root:root)
-        └── cache/            # Jellyfin transcoding cache (755, root:root)
+    ├── jellyfin/             # Jellyfin persistent data (755, root:root)
+    │   ├── config/           # Jellyfin configuration (755, root:root)
+    │   └── cache/            # Jellyfin transcoding cache (755, root:root)
+    └── immich/               # Immich photo management data (755, root:root)
+        ├── postgres/         # PostgreSQL data via DB_DATA_LOCATION (700, 999:999 — postgres container user)
+        └── upload/           # Immich data root via UPLOAD_LOCATION → /data (755, root:root)
+            ├── backups/      # Immich auto DB backups
+            ├── encoded-video/  # Transcoded video files
+            ├── library/      # ← ORIGINALS stored here (Storage Template)
+            │   ├── admin/    # Admin user (storage label = "admin")
+            │   │   └── YYYY/YYYY-MM-DD/  # Date-organized originals
+            │   └── {user_uuid}/  # Regular user (storage label = UUID)
+            │       └── YYYY/YYYY-MM-DD/  # Date-organized originals
+            ├── profile/      # User profile photos
+            ├── thumbs/       # Generated thumbnails
+            └── upload/       # Staging directory (empty after processing)
 ```
 
 ## Top-Level Directories
@@ -71,7 +84,7 @@ Data storage organization on `/mnt/data/` (LUKS encrypted partition). All user d
 - **Purpose**: Service persistent data
 - **Permissions**: 755 (root:root)
 - **Access**: Readable by all, writable by root
-- **Subdirectories**: jellyfin/ (Phase 3), wiki/, immich/, etc. (future phases)
+- **Subdirectories**: jellyfin/ (Phase 3), immich/ (Phase 4), wiki/, etc. (future phases)
 - **Created**: Phase 2, Task 2.1
 
 ## Media Subdirectories
@@ -119,6 +132,33 @@ Data storage organization on `/mnt/data/` (LUKS encrypted partition). All user d
 - **Access**: Readable by all, writable by root
 - **Use Cases**: Temporary transcoded media files
 - **Created**: Phase 3, Task 2.2
+
+### /mnt/data/services/immich/
+- **Purpose**: Immich photo management persistent data
+- **Permissions**: 755 (root:root)
+- **Access**: Readable by all, writable by root
+- **Subdirectories**: postgres/, upload/
+- **Created**: Phase 4, Task 3.1
+- **Note**: model-cache uses a named Docker volume (managed by Docker, not a host directory)
+
+### /mnt/data/services/immich/postgres/
+- **Purpose**: PostgreSQL database data (user accounts, photo metadata, face recognition data)
+- **Permissions**: 700 (999:999 — postgres container user)
+- **Access**: PostgreSQL process inside container only
+- **Use Cases**: Immich metadata, user accounts, face recognition vectors, album data
+- **Created**: Phase 4, Task 3.1
+- **Backup**: pg_dump only (NOT filesystem copy — see docs/09-immich-setup.md)
+- **Docker Mount**: DB_DATA_LOCATION → /var/lib/postgresql/data
+
+### /mnt/data/services/immich/upload/
+- **Purpose**: Immich data root (uploads, library originals, thumbnails, encoded video)
+- **Permissions**: 755 (root:root)
+- **Access**: Immich server container (read-write), Samba container (read-only via library/ subdirectory)
+- **Use Cases**: Photos uploaded from mobile apps, per-user photo storage organized by date
+- **Created**: Phase 4, Task 3.1
+- **Docker Mount**: UPLOAD_LOCATION → /data in immich-server container
+- **Samba Mount**: Read-only mount in Samba container for per-user upload shares (library/ subdirectory)
+- **Structure**: Immich v2 with Storage Template stores originals in `library/{storage_label}/YYYY/YYYY-MM-DD/filename.ext` where storage_label is "admin" for the admin user and the user's UUID for regular users. The `upload/` subdirectory inside is a staging area (empty after processing).
 
 ## Backup Subdirectories
 
@@ -276,4 +316,6 @@ Data storage organization on `/mnt/data/` (LUKS encrypted partition). All user d
 - Architecture Overview: docs/00-architecture-overview.md
 - Foundation Layer: docs/01-foundation-layer.md
 - Infrastructure Layer: docs/02-infrastructure-layer.md
+- Immich Setup: docs/09-immich-setup.md
 - Phase 2 Spec: .kiro/specs/02-infrastructure/
+- Phase 4 Spec: .kiro/specs/04-photo-management/

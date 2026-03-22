@@ -69,11 +69,18 @@ validate_backup_subdirectories() {
 }
 
 validate_services_yaml() {
-    if [[ -f "/opt/homeserver/configs/services.yaml" ]]; then
-        print_success "services.yaml exists"
+    # services.yaml was originally planned for Ansible-based config generation
+    # but was dropped in favor of direct Docker Compose files per service (simpler)
+    # Check that at least one Docker Compose service file exists instead
+    local count=0
+    for f in /opt/homeserver/configs/docker-compose/*.yml; do
+        [[ -f "$f" ]] && count=$((count + 1))
+    done
+    if [[ $count -gt 0 ]]; then
+        print_success "Docker Compose service files found ($count)"
         return 0
     else
-        print_info "services.yaml not yet created (will be created in Task 3.1)"
+        print_info "No Docker Compose service files found in configs/docker-compose/"
         return 1
     fi
 }
@@ -197,14 +204,16 @@ validate_caddy_service() {
 }
 
 validate_caddy_https() {
-    # Required env vars: INTERNAL_SUBDOMAIN (exported by calling script)
+    # Required env vars: INTERNAL_SUBDOMAIN, SERVER_IP (exported by calling script)
     
     if docker ps | grep -q caddy; then
-        if curl -k -s "https://monitor.$INTERNAL_SUBDOMAIN" &>/dev/null; then
-            print_success "Caddy HTTPS working"
+        local http_code
+        http_code=$(curl -k -s -o /dev/null -w "%{http_code}" --resolve "monitor.${INTERNAL_SUBDOMAIN}:443:${SERVER_IP}" "https://monitor.${INTERNAL_SUBDOMAIN}" 2>/dev/null) || true
+        if [[ "$http_code" == "200" ]] || [[ "$http_code" == "301" ]] || [[ "$http_code" == "302" ]]; then
+            print_success "Caddy HTTPS working (HTTP $http_code)"
             return 0
         else
-            print_info "Caddy HTTPS not yet configured"
+            print_info "Caddy HTTPS not yet configured (HTTP $http_code)"
             return 1
         fi
     else
@@ -215,11 +224,15 @@ validate_caddy_https() {
 
 validate_certificate_trust() {
     if docker ps | grep -q caddy; then
+        # Check both: exported copy and original in Caddy data volume
         if [[ -f "/opt/homeserver/configs/caddy/root-ca.crt" ]]; then
             print_success "Root CA certificate exported"
             return 0
+        elif [[ -f "/opt/homeserver/configs/caddy/data/caddy/pki/authorities/local/root.crt" ]]; then
+            print_success "Root CA certificate exists in Caddy data volume"
+            return 0
         else
-            print_info "Root CA certificate not yet exported (Task 4.2)"
+            print_info "Root CA certificate not found"
             return 1
         fi
     else
@@ -259,14 +272,16 @@ validate_netdata_service() {
 }
 
 validate_netdata_dashboard() {
-    # Required env vars: INTERNAL_SUBDOMAIN (exported by calling script)
+    # Required env vars: INTERNAL_SUBDOMAIN, SERVER_IP (exported by calling script)
     
     if docker ps | grep -q netdata; then
-        if curl -k -s "https://monitor.$INTERNAL_SUBDOMAIN" &>/dev/null; then
-            print_success "Netdata dashboard accessible"
+        local http_code
+        http_code=$(curl -k -s -o /dev/null -w "%{http_code}" --resolve "monitor.${INTERNAL_SUBDOMAIN}:443:${SERVER_IP}" "https://monitor.${INTERNAL_SUBDOMAIN}" 2>/dev/null) || true
+        if [[ "$http_code" == "200" ]] || [[ "$http_code" == "301" ]] || [[ "$http_code" == "302" ]]; then
+            print_success "Netdata dashboard accessible (HTTP $http_code)"
             return 0
         else
-            print_info "Netdata dashboard not yet configured"
+            print_info "Netdata dashboard not yet configured (HTTP $http_code)"
             return 1
         fi
     else

@@ -116,11 +116,13 @@ function fix_media_permissions() {
     log "Found ${total_dirs} directories and ${total_files} files in ${media_dir}"
     
     # Check for incorrect permissions
+    local incorrect_owner=$(find "${media_dir}" -not -user media | wc -l)
     local incorrect_group=$(find "${media_dir}" -not -group media | wc -l)
     local incorrect_dir_perms=$(find "${media_dir}" -type d -not -perm 2775 | wc -l)
     local incorrect_file_perms=$(find "${media_dir}" -type f -not -perm 664 | wc -l)
     
     log "Issues found:"
+    log "  - ${incorrect_owner} items with incorrect owner (should be media)"
     log "  - ${incorrect_group} items with incorrect group (should be media)"
     log "  - ${incorrect_dir_perms} directories with incorrect permissions (should be 2775)"
     log "  - ${incorrect_file_perms} files with incorrect permissions (should be 664)"
@@ -130,14 +132,14 @@ function fix_media_permissions() {
         return 0
     fi
     
-    if [ "${incorrect_group}" -eq 0 ] && [ "${incorrect_dir_perms}" -eq 0 ] && [ "${incorrect_file_perms}" -eq 0 ]; then
+    if [ "${incorrect_owner}" -eq 0 ] && [ "${incorrect_group}" -eq 0 ] && [ "${incorrect_dir_perms}" -eq 0 ] && [ "${incorrect_file_perms}" -eq 0 ]; then
         log "No fixes needed for Media share"
         return 0
     fi
     
-    # Fix group ownership
-    log "Changing group ownership to media..."
-    chgrp -R media "${media_dir}"
+    # Fix ownership (user and group)
+    log "Changing ownership to media:media..."
+    chown -R media:media "${media_dir}"
     
     # Fix directory permissions (setgid bit)
     log "Applying setgid bit (2775) to directories..."

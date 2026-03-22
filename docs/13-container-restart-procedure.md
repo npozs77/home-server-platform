@@ -36,7 +36,9 @@ Always restart containers in this order to maintain service dependencies:
 
 1. **Pi-hole** (DNS) - Must be first, other services depend on DNS
 2. **Caddy** (Reverse Proxy) - Routes traffic to services
-3. **Application Services** (Jellyfin, Immich, etc.) - Depend on DNS and proxy
+3. **Application Services** - Depend on DNS and proxy:
+   - Jellyfin
+   - Immich (restart order: postgres → redis → server → ml; see Immich section below)
 
 ---
 
@@ -218,8 +220,123 @@ dig @127.0.0.1 google.com
 
 ---
 
+---
+
+## Immich Photo Management
+
+### Restart Order
+
+Immich containers must be restarted in dependency order:
+
+1. **immich-postgres** (database) — must be healthy first
+2. **immich-redis** (Valkey cache) — must be healthy before server
+3. **immich-server** (API + background workers)
+4. **immich-ml** (machine learning / face recognition)
+
+```bash
+docker restart immich-postgres
+sleep 30  # Wait for PostgreSQL to become healthy
+
+docker restart immich-redis
+sleep 10  # Wait for Valkey to become healthy
+
+docker restart immich-server
+sleep 15  # Wait for server to become healthy
+
+docker restart immich-ml
+sleep 10
+
+# Verify all healthy
+docker ps | grep immich
+```
+
+### Upgrade Procedure
+
+1. **Backup first** (mandatory before any upgrade):
+   ```bash
+   sudo /opt/homeserver/scripts/backup/backup-immich.sh /mnt/backup/immich
+   ```
+
+2. **Update version** in services.env:
+   ```bash
+   # Edit IMMICH_VERSION (e.g., v2.5.6 → v2.6.0)
+   nano /opt/homeserver/configs/services.env
+   ```
+
+3. **Pull new images**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/immich.yml pull
+   ```
+
+4. **Recreate containers**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/immich.yml up -d
+   ```
+
+5. **Validate**:
+   ```bash
+   docker ps | grep immich
+   # All containers should show (healthy)
+   curl -k https://photos.home.mydomain.com
+   # Should return HTTP 200
+   ```
+
+6. **Commit** (if upgrade successful):
+   ```bash
+   cd /opt/homeserver
+   git add configs/services.env
+   git commit -m "Upgrade Immich to vX.Y.Z"
+   ```
+
+### Rollback Procedure
+
+If upgrade fails or causes issues:
+
+1. **Revert version** in services.env:
+   ```bash
+   git checkout configs/services.env
+   ```
+
+2. **Pull old images**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/immich.yml pull
+   ```
+
+3. **Recreate containers**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/immich.yml up -d
+   ```
+
+4. **Restore database** (if needed — only if migration ran):
+   ```bash
+   # Stop immich-server first
+   docker stop immich-server immich-ml
+   # Restore from pg_dump backup
+   docker exec -i immich-postgres psql -U postgres -d immich < /mnt/backup/immich/immich_db_backup.sql
+   # Restart
+   docker start immich-server immich-ml
+   ```
+
+5. **Verify rollback**:
+   ```bash
+   docker ps | grep immich
+   curl -k https://photos.home.mydomain.com
+   ```
+
+### Immich HEALTHCHECK Commands
+
+| Container | Health Check | Interval |
+|-----------|-------------|----------|
+| immich-postgres | `pg_isready -U postgres -d immich` | 10s |
+| immich-redis | `redis-cli ping` | 10s |
+| immich-server | `immich-healthcheck` | 30s |
+| immich-ml | `python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:3003/ping')"` | 30s |
+
+---
+
 ## Related Documentation
 
 - docs/12-runbooks.md (Network Unreachability troubleshooting)
 - docs/02-infrastructure-layer.md (Infrastructure architecture)
+- docs/09-immich-setup.md (Immich setup and configuration)
 - scripts/operations/monitoring/check-container-health.sh (Health monitoring)
