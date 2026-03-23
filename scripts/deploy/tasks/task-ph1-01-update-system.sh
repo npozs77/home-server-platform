@@ -38,7 +38,7 @@ current_hostname=$(hostnamectl --static)
 
 if [[ "$current_timezone" == "$TIMEZONE" ]] && [[ "$current_hostname" == "$HOSTNAME" ]]; then
     # Check if essential tools installed
-    if command -v git &>/dev/null && command -v vim &>/dev/null && command -v curl &>/dev/null; then
+    if command -v git &>/dev/null && command -v vim &>/dev/null && command -v curl &>/dev/null && command -v fzf &>/dev/null && command -v rg &>/dev/null && command -v jq &>/dev/null; then
         print_info "System already updated and configured - skip"
         exit 0
     fi
@@ -51,6 +51,8 @@ if [[ "$DRY_RUN" == true ]]; then
     print_info "[DRY-RUN] Would set timezone to: $TIMEZONE"
     print_info "[DRY-RUN] Would set hostname to: $HOSTNAME"
     print_info "[DRY-RUN] Would install essential tools (git, vim, curl, wget, htop, net-tools)"
+    print_info "[DRY-RUN] Would install modern CLI tools (fzf, ripgrep, bat, fd-find, jq, zsh)"
+    print_info "[DRY-RUN] Would create symlinks for bat and fd"
     exit 0
 fi
 
@@ -76,6 +78,21 @@ hostnamectl set-hostname "$HOSTNAME"
 # Install essential tools
 print_info "Installing essential tools..."
 apt install -y git vim curl wget htop net-tools
+
+# Install modern CLI tools
+print_info "Installing modern CLI tools..."
+apt install -y fzf ripgrep bat fd-find jq zsh zsh-autosuggestions zsh-syntax-highlighting
+
+# Create symlinks for Ubuntu-renamed binaries (idempotent)
+if [[ ! -L /usr/local/bin/bat ]] && command -v batcat &>/dev/null; then
+    ln -sf /usr/bin/batcat /usr/local/bin/bat
+    print_success "Created symlink: bat → batcat"
+fi
+
+if [[ ! -L /usr/local/bin/fd ]] && command -v fdfind &>/dev/null; then
+    ln -sf /usr/bin/fdfind /usr/local/bin/fd
+    print_success "Created symlink: fd → fdfind"
+fi
 
 print_success "Task 1 complete"
 exit 0

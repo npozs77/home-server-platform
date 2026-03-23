@@ -9,10 +9,10 @@ set -euo pipefail
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Source utility libraries
-source "${SCRIPT_DIR}/../operations/utils/output-utils.sh"
-source "${SCRIPT_DIR}/../operations/utils/env-utils.sh"
-source "${SCRIPT_DIR}/../operations/utils/validation-foundation-utils.sh"
+# Source utility libraries (use absolute paths to avoid nested sourcing issues)
+source "/opt/homeserver/scripts/operations/utils/output-utils.sh"
+source "/opt/homeserver/scripts/operations/utils/env-utils.sh"
+source "/opt/homeserver/scripts/operations/utils/validation-foundation-utils.sh"
 
 # Configuration file paths
 FOUNDATION_CONFIG="/opt/homeserver/configs/foundation.env"
@@ -93,8 +93,8 @@ init_config() {
     read -p "Admin user [${ADMIN_USER:-$SUDO_USER}]: " input
     ADMIN_USER="${input:-${ADMIN_USER:-$SUDO_USER}}"
     
-    read -p "Admin email [${ADMIN_EMAIL:-admin@example.com}]: " input
-    ADMIN_EMAIL="${input:-${ADMIN_EMAIL:-admin@example.com}}"
+    read -p "Admin email [${ADMIN_EMAIL:-admin@mydomain.com}]: " input
+    ADMIN_EMAIL="${input:-${ADMIN_EMAIL:-admin@mydomain.com}}"
     
     echo ""
     print_info "Available disks:"
@@ -187,6 +187,12 @@ execute_setup_auto_updates() {
     "${SCRIPT_DIR}/tasks/task-ph1-08-setup-auto-updates.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 
+execute_setup_shell_environment() {
+    load_config || { print_error "Configuration not loaded"; return 1; }
+    export ADMIN_USER
+    "${SCRIPT_DIR}/tasks/task-ph1-09-setup-shell-environment.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+}
+
 # Validation function
 validate_all() {
     print_header "Phase 01 Foundation Validation"
@@ -206,6 +212,7 @@ validate_all() {
         "LUKS Encryption:validate_luks_encryption"
         "Docker Group:validate_docker_group"
         "Essential Tools:validate_essential_tools"
+        "Shell Environment:validate_shell_environment"
     )
     
     for check in "${checks[@]}"; do
@@ -248,11 +255,12 @@ main_menu() {
         echo "6. Install Docker and Docker Compose"
         echo "7. Initialize infrastructure Git repository"
         echo "8. Set up automated security updates"
+        echo "9. Set up global shell environment (Zsh + Oh-My-Zsh + Powerlevel10k)"
         echo ""
         echo "v. Validate all"
         echo "q. Quit"
         echo ""
-        read -p "Select option [0,c,1-8,v,q]: " option
+        read -p "Select option [0,c,1-9,v,q]: " option
         echo ""
         
         case $option in
@@ -266,6 +274,7 @@ main_menu() {
             6) execute_install_docker ;;
             7) execute_init_git_repo ;;
             8) execute_setup_auto_updates ;;
+            9) execute_setup_shell_environment ;;
             v) validate_all ;;
             q) echo "Exiting..."; exit 0 ;;
             *) print_error "Invalid option" ;;

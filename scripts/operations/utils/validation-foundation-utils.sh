@@ -266,5 +266,76 @@ validate_essential_tools() {
         fi
     done
     
+    # Check modern CLI tools
+    for tool in fzf rg jq zsh; do
+        if command -v "$tool" &> /dev/null; then
+            print_success "$tool installed"
+        else
+            print_error "$tool NOT installed"
+            status="FAIL"
+        fi
+    done
+    
+    # Check symlinks
+    if [[ -L /usr/local/bin/bat ]] || command -v bat &>/dev/null; then
+        print_success "bat available"
+    else
+        print_error "bat NOT available (symlink missing?)"
+        status="FAIL"
+    fi
+    
+    if [[ -L /usr/local/bin/fd ]] || command -v fd &>/dev/null; then
+        print_success "fd available"
+    else
+        print_error "fd NOT available (symlink missing?)"
+        status="FAIL"
+    fi
+    
+    [[ "$status" == "PASS" ]] && return 0 || return 1
+}
+
+validate_shell_environment() {
+    local status="PASS"
+    
+    # Check Oh-My-Zsh installed
+    if [[ -d /usr/share/oh-my-zsh ]]; then
+        print_success "Oh-My-Zsh installed system-wide"
+    else
+        print_error "Oh-My-Zsh NOT installed"
+        status="FAIL"
+    fi
+    
+    # Check Powerlevel10k installed
+    if [[ -d /usr/share/powerlevel10k ]]; then
+        print_success "Powerlevel10k installed system-wide"
+    else
+        print_error "Powerlevel10k NOT installed"
+        status="FAIL"
+    fi
+    
+    # Check ZDOTDIR
+    if grep -q "ZDOTDIR=/etc/zsh" /etc/zsh/zshenv 2>/dev/null; then
+        print_success "ZDOTDIR set to /etc/zsh"
+    else
+        print_error "ZDOTDIR NOT configured"
+        status="FAIL"
+    fi
+    
+    # Check global .zshrc
+    if [[ -f /etc/zsh/.zshrc ]]; then
+        print_success "Global .zshrc exists"
+    else
+        print_error "Global .zshrc NOT found"
+        status="FAIL"
+    fi
+    
+    # Check default shell for new users
+    if grep -q "/usr/bin/zsh" /etc/default/useradd 2>/dev/null; then
+        print_success "Default shell set to zsh for new users"
+    else
+        print_error "Default shell NOT set to zsh"
+        status="FAIL"
+    fi
+    
     [[ "$status" == "PASS" ]] && return 0 || return 1
 }

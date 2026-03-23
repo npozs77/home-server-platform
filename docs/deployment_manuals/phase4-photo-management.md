@@ -231,7 +231,8 @@ docker inspect immich-server --format \
 ## Task 11: Validate Phase 4
 
 ```bash
-sudo ./scripts/deploy/tasks/task-ph4-08-validate-phase4.sh
+sudo ./scripts/deploy/deploy-phase4-photo-management.sh
+# Select option: v (Validate all)
 ```
 
 **Expected Output**:

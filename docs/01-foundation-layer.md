@@ -28,6 +28,65 @@ This document describes the AS-IS foundation layer configuration after Phase 01 
 - wget - File downloader
 - htop - Process monitor
 - net-tools - Network utilities
+- fzf - Fuzzy finder (Ctrl+R history search)
+- ripgrep (rg) - Fast recursive grep
+- bat (batcat) - cat with syntax highlighting
+- fd-find (fd) - Fast file finder
+- jq - JSON processor
+
+**Ubuntu symlinks** (Ubuntu renames some packages):
+- `/usr/local/bin/bat` → `/usr/bin/batcat`
+- `/usr/local/bin/fd` → `/usr/bin/fdfind`
+
+## Shell Environment
+
+### Global Zsh Configuration
+
+**Default shell**: Zsh (for all SSH users)
+**Framework**: Oh-My-Zsh (system-wide at `/usr/share/oh-my-zsh`)
+**Theme**: Powerlevel10k (system-wide at `/usr/share/powerlevel10k`)
+
+**Global config location**: `/etc/zsh/`
+- `/etc/zsh/zshenv` — sets `ZDOTDIR=/etc/zsh`
+- `/etc/zsh/.zshrc` — global shell config (plugins, theme, aliases)
+- `/etc/zsh/p10k.zsh` — Powerlevel10k theme config
+
+**Plugins**:
+- zsh-autosuggestions (gray inline suggestions)
+- zsh-syntax-highlighting (command coloring)
+- fzf (Ctrl+R fuzzy history search)
+- git (aliases and completions)
+
+**Key behavior**:
+- No per-user `.zshrc` required — global config applies to all users
+- New users default to zsh via `/etc/default/useradd`
+- Powerlevel10k prompt with git status, exit codes, execution time
+
+**Verification**:
+```bash
+# Check default shell
+echo $SHELL
+# Should show: /usr/bin/zsh
+
+# Check ZDOTDIR
+echo $ZDOTDIR
+# Should show: /etc/zsh
+
+# Check Oh-My-Zsh
+ls /usr/share/oh-my-zsh/
+# Should exist
+
+# Check Powerlevel10k
+ls /usr/share/powerlevel10k/
+# Should exist
+```
+
+**Reconfigure Powerlevel10k prompt**:
+```bash
+p10k configure
+# Then copy to global:
+sudo cp ~/.p10k.zsh /etc/zsh/p10k.zsh
+```
 
 ## Security Configuration
 
@@ -324,7 +383,7 @@ network:
 
 **Script**: `deploy-phase1-foundation.sh` (option v)
 
-**9 Validation Checks**:
+**10 Validation Checks**:
 1. **SSH Hardening**: Password auth disabled, key auth enabled
 2. **UFW Firewall**: Active with LAN-only rules
 3. **fail2ban**: Running and monitoring SSH
@@ -333,7 +392,8 @@ network:
 6. **Unattended-upgrades**: Enabled and configured
 7. **LUKS Encryption**: Data partition encrypted and auto-unlocks
 8. **Docker Group**: Admin user in docker group
-9. **Essential Tools**: git, vim, curl, wget, htop installed
+9. **Essential Tools**: git, vim, curl, wget, htop, fzf, rg, bat, fd, jq installed
+10. **Shell Environment**: Zsh default, Oh-My-Zsh + Powerlevel10k global config
 
 **Run Validation**:
 ```bash

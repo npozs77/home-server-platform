@@ -400,10 +400,11 @@ Next steps:
    6. Install Docker and Docker Compose
    7. Initialize infrastructure Git repository
    8. Set up automated security updates
+   9. Set up global shell environment (Zsh + Oh-My-Zsh + Powerlevel10k)
    v. Validate all
    q. Quit
 
-   Select option [0,c,1-8,v,q]: 0
+   Select option [0,c,1-9,v,q]: 0
    ```
 
 3. **Enter configuration values**
@@ -667,7 +668,18 @@ sudo cryptsetup luksClose test_unlock
    sudo apt install -y git vim curl wget htop net-tools
    ```
 
-6. **Verify updates**
+6. **Install modern CLI tools**
+   ```bash
+   sudo apt install -y fzf ripgrep bat fd-find jq zsh zsh-autosuggestions zsh-syntax-highlighting
+   ```
+
+7. **Create symlinks for Ubuntu-renamed binaries**
+   ```bash
+   sudo ln -sf /usr/bin/batcat /usr/local/bin/bat
+   sudo ln -sf /usr/bin/fdfind /usr/local/bin/fd
+   ```
+
+8. **Verify updates**
    ```bash
    apt list --upgradable
    # Should show: All packages are up to date
@@ -1439,7 +1451,105 @@ sudo tail -20 /var/log/unattended-upgrades/unattended-upgrades.log
 - **No logs**: Wait 24 hours for first run, check systemd timer
 
 
-## Task 13: Validate Phase 1 Completion
+## Task 13: Set Up Global Shell Environment
+
+**Objective**: Configure Zsh with Oh-My-Zsh and Powerlevel10k for all SSH users
+
+**Prerequisites**:
+- Zsh and plugins installed (done in Task 6)
+- Git installed (for cloning repos)
+
+**Sub-task 13.1: Install Oh-My-Zsh system-wide**
+
+**Steps**:
+```bash
+sudo git clone https://github.com/ohmyzsh/ohmyzsh.git /usr/share/oh-my-zsh
+```
+
+**Sub-task 13.2: Install Powerlevel10k system-wide**
+
+**Steps**:
+```bash
+sudo git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /usr/share/powerlevel10k
+sudo ln -sf /usr/share/powerlevel10k /usr/share/oh-my-zsh/themes/powerlevel10k
+```
+
+**Sub-task 13.3: Set up plugin symlinks**
+
+**Steps**:
+```bash
+sudo mkdir -p /usr/share/oh-my-zsh/custom/plugins
+sudo ln -sf /usr/share/zsh-autosuggestions /usr/share/oh-my-zsh/custom/plugins/zsh-autosuggestions
+sudo ln -sf /usr/share/zsh-syntax-highlighting /usr/share/oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+```
+
+**Sub-task 13.4: Configure global ZDOTDIR**
+
+**Steps**:
+```bash
+# Add as first line of /etc/zsh/zshenv
+sudo sed -i '1i export ZDOTDIR=/etc/zsh' /etc/zsh/zshenv
+```
+
+**Sub-task 13.5: Create global .zshrc**
+
+The deployment script (option 9) creates this automatically. If running manually:
+
+```bash
+sudo nano /etc/zsh/.zshrc
+```
+
+Contents — see `input/ubuntu-zsh-global-setup.md` section 6 for the full file.
+
+**Sub-task 13.6: Set Zsh as default shell**
+
+**Steps**:
+```bash
+# Change existing admin user
+sudo chsh -s /usr/bin/zsh admin
+
+# Set default for new users
+sudo sed -i 's#/bin/bash#/usr/bin/zsh#g' /etc/default/useradd
+```
+
+**Sub-task 13.7: Generate Powerlevel10k config**
+
+**Steps**:
+1. Log out and log back in via SSH
+2. Powerlevel10k wizard starts automatically
+3. Follow prompts to configure prompt style
+4. Copy config to global location:
+   ```bash
+   sudo cp ~/.p10k.zsh /etc/zsh/p10k.zsh
+   ```
+
+**Verification Checklist**:
+- [ ] Oh-My-Zsh installed at /usr/share/oh-my-zsh
+- [ ] Powerlevel10k installed at /usr/share/powerlevel10k
+- [ ] ZDOTDIR set to /etc/zsh
+- [ ] Global .zshrc exists at /etc/zsh/.zshrc
+- [ ] Zsh is default shell for admin user
+- [ ] New users default to zsh
+- [ ] Powerlevel10k prompt visible after login
+- [ ] Autosuggestions working (gray text)
+- [ ] Syntax highlighting working (colored commands)
+- [ ] fzf Ctrl+R history search working
+
+**Verification Commands**:
+```bash
+echo $SHELL        # Should show: /usr/bin/zsh
+echo $ZDOTDIR      # Should show: /etc/zsh
+echo $ZSH          # Should show: /usr/share/oh-my-zsh
+```
+
+**Troubleshooting**:
+- **Wizard doesn't start**: Run `p10k configure` manually
+- **No colors/icons**: Terminal needs a Nerd Font installed (e.g., MesloLGS NF)
+- **Plugins not loading**: Check symlinks in /usr/share/oh-my-zsh/custom/plugins/
+- **Autosuggestions missing**: Verify zsh-autosuggestions package installed
+
+
+## Task 14: Validate Phase 1 Completion
 
 **Objective**: Verify all foundation components are working correctly
 
@@ -1472,6 +1582,7 @@ sudo tail -20 /var/log/unattended-upgrades/unattended-upgrades.log
    7. LUKS Encryption.................. ✓ PASS
    8. Docker Group..................... ✓ PASS
    9. Essential Tools.................. ✓ PASS
+   10. Shell Environment................ ✓ PASS
 
    All checks passed! ✓
    ```
@@ -1579,7 +1690,7 @@ sudo tail -20 /var/log/unattended-upgrades/unattended-upgrades.log
 
    ## Validation Results
 
-   All 9 validation checks passed.
+   All 10 validation checks passed.
 
    ## Next Steps
 
@@ -1595,7 +1706,7 @@ sudo tail -20 /var/log/unattended-upgrades/unattended-upgrades.log
    ```
 
 **Verification Checklist**:
-- [ ] All 9 automated validation checks pass
+- [ ] All 10 automated validation checks pass
 - [ ] SSH key authentication works
 - [ ] Firewall blocks unauthorized access
 - [ ] fail2ban is monitoring
