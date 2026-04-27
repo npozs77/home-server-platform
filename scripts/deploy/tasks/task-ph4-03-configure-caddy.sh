@@ -111,6 +111,11 @@ ${IMMICH_DOMAIN} {
     log {
         output file /var/log/caddy/photos-access.log
     }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
 }
 EOFCADDY
 

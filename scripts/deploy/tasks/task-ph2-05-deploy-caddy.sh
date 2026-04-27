@@ -43,6 +43,7 @@ fi
 
 # Create Caddy config directory
 mkdir -p /opt/homeserver/configs/caddy
+mkdir -p /opt/homeserver/configs/caddy/pages
 mkdir -p /var/log/caddy
 
 # Create minimal Caddyfile
@@ -62,6 +63,11 @@ test.$INTERNAL_SUBDOMAIN {
     log {
         output file /var/log/caddy/test-access.log
     }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
 }
 
 # Pi-hole web interface (host networking, port 8080)
@@ -70,6 +76,11 @@ pihole.$INTERNAL_SUBDOMAIN {
     tls internal
     log {
         output file /var/log/caddy/pihole-access.log
+    }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
     }
 }
 EOF
@@ -114,6 +125,7 @@ docker run -d \
     -v /opt/homeserver/configs/caddy/data:/data \
     -v /opt/homeserver/configs/caddy/config:/config \
     -v /var/log/caddy:/var/log/caddy \
+    -v /opt/homeserver/configs/caddy/pages:/srv/pages:ro \
     --health-cmd "curl -f http://localhost:80 || exit 1" \
     --health-interval 30s \
     --health-timeout 10s \

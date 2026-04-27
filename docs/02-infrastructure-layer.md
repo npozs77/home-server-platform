@@ -415,6 +415,7 @@ docker logs caddy | grep error
 - **Caddy config**: /opt/homeserver/configs/caddy/Caddyfile
 - **Caddy data**: /opt/homeserver/configs/caddy/data/
 - **Caddy logs**: /var/log/caddy/
+- **Caddy pages**: /opt/homeserver/configs/caddy/pages/ (startup page, mounted at /srv/pages in container)
 - **Pi-hole config**: /opt/homeserver/configs/pihole/
 - **Netdata config**: /opt/homeserver/configs/netdata/
 - **Root CA certificate**: /opt/homeserver/configs/caddy/root-ca.crt

@@ -91,6 +91,11 @@ ${JELLYFIN_DOMAIN} {
     log {
         output file /var/log/caddy/media-access.log
     }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
 }
 EOFCADDY
     
