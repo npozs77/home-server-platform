@@ -216,6 +216,7 @@ validate_all() {
         "Caddy HTTPS:validate_caddy_https"
         "CA Certificate:validate_certificate_trust"
         "Pi-hole Service:validate_dns_service"
+        "Pi-hole Web UI:validate_pihole_web_ui"
         "DNS Resolution:validate_dns_resolution"
         "External DNS:validate_external_dns"
         "msmtp Service:validate_smtp_service"

@@ -63,10 +63,30 @@ docker logs pihole --tail 50
 
 ### Caddy Management
 
-**Reload Caddyfile** (after editing):
+**Reload Caddyfile** (after in-place edit with `nano` or `sed`):
 ```bash
 docker exec caddy caddy reload --config /etc/caddy/Caddyfile
 ```
+
+**Caddyfile update procedure** (when replacing the file via `cp` or `scp`):
+
+The Caddyfile is bind-mounted as a single file. Docker holds a reference to the original inode. If you replace the file (via `cp`, `scp`, or redirect `>`), the container keeps reading the old inode and `caddy reload` silently uses stale config.
+
+```bash
+# WRONG — creates new inode, container won't see changes:
+cp /tmp/new-Caddyfile /opt/homeserver/configs/caddy/Caddyfile
+scp local-Caddyfile homeserver:/opt/homeserver/configs/caddy/Caddyfile
+
+# RIGHT — edit in-place (preserves inode):
+nano /opt/homeserver/configs/caddy/Caddyfile
+sed -i 's/old/new/' /opt/homeserver/configs/caddy/Caddyfile
+
+# OR — restart container after replacing file (picks up new inode):
+cp /tmp/new-Caddyfile /opt/homeserver/configs/caddy/Caddyfile
+docker restart caddy
+```
+
+Same applies to `starting.html` and any other single-file bind mount. Directory mounts (`/srv/pages`, `/data`, `/config`) are NOT affected — new files in a mounted directory are visible immediately.
 
 **Check Caddy logs**:
 ```bash
@@ -91,19 +111,38 @@ service.home.mydomain.com {
     log {
         output file /var/log/caddy/service-access.log
     }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
 }
 ```
-Or for host networking service:
+Or for host networking service (e.g., Pi-hole):
 ```
 service.home.mydomain.com {
-    reverse_proxy 192.168.1.2:port
+    reverse_proxy DOCKER_GATEWAY_IP:port {
+        header_up Host expected-hostname
+    }
     tls internal
     log {
         output file /var/log/caddy/service-access.log
     }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
 }
 ```
+Note: Host networking services can't be reached by container name from Caddy's bridge network.
+Use the Docker gateway IP (`docker inspect caddy --format='{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}'`).
+UFW must allow traffic from Docker's bridge subnet (172.18.0.0/16) to the service port.
 Then reload: `docker exec caddy caddy reload --config /etc/caddy/Caddyfile`
+
+**handle_errors block**: Every site block must include the `handle_errors` block above. When a backend container is down, Caddy serves `/srv/pages/starting.html` (a friendly "starting up" page with auto-retry) instead of a raw 502/503 error. The page auto-refreshes every 5 seconds until the service is back.
+
+**Startup page location**: `/opt/homeserver/configs/caddy/pages/starting.html` (mounted read-only at `/srv/pages` in the Caddy container).
 
 ### Container Management
 
@@ -174,6 +213,7 @@ docker run -d \
     -v /opt/homeserver/configs/caddy/data:/data \
     -v /opt/homeserver/configs/caddy/config:/config \
     -v /var/log/caddy:/var/log/caddy \
+    -v /opt/homeserver/configs/caddy/pages:/srv/pages:ro \
     --health-cmd "curl -f http://localhost:80 || exit 1" \
     --health-interval 30s \
     --health-timeout 10s \
@@ -220,6 +260,9 @@ sudo ufw allow from 192.168.1.0/24 to any port 53 proto tcp
 
 # Pi-hole web interface
 sudo ufw allow from 192.168.1.0/24 to any port 8888 proto tcp
+
+# Pi-hole web interface from Docker bridge (for Caddy reverse proxy)
+sudo ufw allow from 172.18.0.0/16 to any port 8888 proto tcp
 ```
 
 ## Client Configuration
@@ -240,9 +283,19 @@ sudo update-ca-certificates
 ```
 
 **macOS**:
-1. Copy root-ca.crt from server
-2. Double-click to open Keychain Access
-3. Set trust to "Always Trust"
+1. Copy root-ca.crt from server (requires sudo on server since file is root-owned):
+   ```bash
+   # On server first: copy to readable location
+   sudo cp /opt/homeserver/configs/caddy/data/caddy/pki/authorities/local/root.crt /tmp/caddy-root-ca.crt
+   sudo chmod 644 /tmp/caddy-root-ca.crt
+   # From laptop:
+   scp user@192.168.1.2:/tmp/caddy-root-ca.crt ~/Downloads/
+   ```
+2. Install to system keychain:
+   ```bash
+   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/Downloads/caddy-root-ca.crt
+   ```
+3. Firefox uses its own cert store — either import via Settings → Privacy & Security → Certificates → Import, or set `security.enterprise_roots.enabled = true` in `about:config`
 
 ### Configure DNS
 
@@ -264,6 +317,32 @@ ipconfig /all | findstr "DNS Servers"
 ```
 
 ## Troubleshooting
+
+### Startup page not showing (raw 502 instead)
+
+**Check pages volume is mounted**:
+```bash
+docker inspect caddy --format='{{range .Mounts}}{{if eq .Destination "/srv/pages"}}{{.Source}} -> {{.Destination}} ({{.Mode}}){{end}}{{end}}'
+```
+If empty, redeploy Caddy with `-v /opt/homeserver/configs/caddy/pages:/srv/pages:ro`.
+
+**Check starting.html exists inside container**:
+```bash
+docker exec caddy ls -la /srv/pages/starting.html
+```
+
+**Check handle_errors block in Caddyfile**:
+```bash
+docker exec caddy grep -A 4 "handle_errors" /etc/caddy/Caddyfile
+```
+If missing, the container may be reading a stale Caddyfile (see "Caddyfile update procedure" above). Fix: `docker restart caddy`.
+
+**Check Caddyfile inode matches** (single-file bind mount gotcha):
+```bash
+# If these differ, container is reading stale config — restart required
+stat -c %i /opt/homeserver/configs/caddy/Caddyfile
+docker exec caddy stat -c %i /etc/caddy/Caddyfile
+```
 
 ### DNS not resolving
 
@@ -382,7 +461,14 @@ docker exec pihole pihole -g
 - Environment variable `WEB_PORT` renamed to `FTLCONF_webserver_port` in v6
 - `WEBPASSWORD` environment variable doesn't set password on first run - use `pihole setpassword` command
 - Web server requires explicit port configuration when using host networking
+- Pi-hole v6 `webserver.domain` setting (default: `pi.hole`) controls which Host header the web UI responds to. Caddy must send `header_up Host pi.hole` or requests get rejected/redirected.
 - Reference: https://discourse.pi-hole.net/t/web-port-setting-seems-to-be-ignored-in-v6/77564
+
+### Caddy Proxying to Host Networking Services
+- Caddy runs on Docker bridge network (`homeserver`) and cannot resolve host networking container names
+- Use Docker gateway IP instead of container name or host IP: `docker inspect caddy --format='{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}'`
+- Host IP (192.168.1.2) times out from Docker bridge due to UFW blocking Docker subnet traffic
+- UFW must allow Docker bridge subnet (172.18.0.0/16) to reach the service port: `ufw allow from 172.18.0.0/16 to any port 8888 proto tcp`
 
 ### Docker Networking
 - Custom `homeserver` network required for container-to-container communication

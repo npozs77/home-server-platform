@@ -296,6 +296,23 @@ validate_data_directories() { validate_data_structure; }
 validate_caddy_container() { validate_caddy_service; }
 validate_ca_certificate() { validate_certificate_trust; }
 validate_pihole_container() { validate_dns_service; }
+validate_pihole_web_ui() {
+    # Validates Pi-hole web interface is accessible via Caddy reverse proxy
+    # Required env vars: INTERNAL_SUBDOMAIN, SERVER_IP
+    if ! docker ps | grep -q pihole; then
+        print_info "Pi-hole not yet deployed"
+        return 1
+    fi
+    local http_code
+    http_code=$(curl -k -s -o /dev/null -w "%{http_code}" --resolve "pihole.${INTERNAL_SUBDOMAIN}:443:${SERVER_IP}" "https://pihole.${INTERNAL_SUBDOMAIN}/admin/" 2>/dev/null) || true
+    if [[ "$http_code" == "200" ]] || [[ "$http_code" == "301" ]] || [[ "$http_code" == "302" ]]; then
+        print_success "Pi-hole web UI accessible via Caddy (HTTP $http_code)"
+        return 0
+    else
+        print_error "Pi-hole web UI NOT accessible via Caddy (HTTP $http_code)"
+        return 1
+    fi
+}
 validate_dns_records() { validate_dns_resolution; }
 validate_msmtp() { validate_smtp_service; }
 validate_netdata_container() { validate_netdata_service; }

@@ -4,43 +4,80 @@
 
 # Global options
 {
-    email admin@example.com
     local_certs
 }
 
 # Test service (for Phase 2 validation)
-test.home.example.com {
+test.home.mydomain.com {
     reverse_proxy test-service:80
     tls internal
     log {
         output file /var/log/caddy/test-access.log
     }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
 }
 
 # Pi-hole DNS Admin (Phase 2)
-pihole.home.example.com {
-    reverse_proxy SERVER_IP:8080
+# Pi-hole uses host networking, so Caddy must reach it via Docker gateway IP
+# header_up Host required because Pi-hole v6 only serves requests matching webserver.domain
+pihole.home.mydomain.com {
+    reverse_proxy DOCKER_GATEWAY_IP:8888 {
+        header_up Host pi.hole
+    }
     tls internal
     log {
         output file /var/log/caddy/pihole-access.log
     }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
 }
 
 # Netdata Monitoring (Phase 2)
-monitor.home.example.com {
+monitor.home.mydomain.com {
     reverse_proxy netdata:19999
     tls internal
     log {
         output file /var/log/caddy/monitor-access.log
     }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
 }
 
 # Jellyfin Media Streaming Service (Phase 3)
-media.home.example.com {
+media.home.mydomain.com {
     redir / /web/ 302
     reverse_proxy jellyfin:8096
     tls internal
     log {
         output file /var/log/caddy/media-access.log
+    }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
+}
+
+# Immich Photo Management (Phase 4)
+photos.home.mydomain.com {
+    reverse_proxy immich-server:2283
+    tls internal
+    log {
+        output file /var/log/caddy/photos-access.log
+    }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
     }
 }

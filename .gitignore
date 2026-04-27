@@ -25,7 +25,11 @@ Thumbs.db
 *.swo
 
 # sensitive configs
-configs/caddy/
+configs/caddy/*
+!configs/caddy/Caddyfile.example
+!configs/caddy/pages
+configs/caddy/pages/*
+!configs/caddy/pages/starting.html.example
 configs/pihole/
 configs/netdata/
 configs/samba/
