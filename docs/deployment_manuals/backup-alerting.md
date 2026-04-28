@@ -53,6 +53,13 @@ ssh homeserver 'bash -n /opt/homeserver/scripts/operations/utils/log-utils.sh'
 
 ## Step 2: DAS LUKS Setup
 
+Backup disk variables (`BACKUP_DISK`, `BACKUP_MOUNT`, `BACKUP_MAPPER`) are configured in `foundation.env` (set during Phase 1 config initialization, option 0). Verify they're set:
+
+```bash
+ssh homeserver 'grep BACKUP /opt/homeserver/configs/foundation.env'
+# Expected: BACKUP_DISK="/dev/sdb2", BACKUP_MOUNT="/mnt/backup", BACKUP_MAPPER="backup_crypt"
+```
+
 ```bash
 # Copy setup script
 scp scripts/backup/setup-das-luks.sh homeserver:/opt/homeserver/scripts/backup/setup-das-luks.sh

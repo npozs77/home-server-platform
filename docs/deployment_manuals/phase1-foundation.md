@@ -415,6 +415,7 @@ Next steps:
    - Admin email: `admin@mydomain.com`
    - Data disk: `/dev/sdb` (verify with `lsblk`)
    - LUKS passphrase: Strong passphrase (20+ characters)
+   - Backup disk partition: `/dev/sdb2` (external DAS partition — verify with `lsblk`; leave default if no DAS connected yet)
    - Git user name: `Admin User`
    - Git user email: `admin@home.mydomain.com`
 
