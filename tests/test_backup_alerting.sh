@@ -29,6 +29,8 @@ BACKUP_ALL="$REPO_ROOT/scripts/backup/backup-all.sh"
 BACKUP_WIKI="$REPO_ROOT/scripts/backup/backup-wiki.sh"
 HEALTH_CHECK="$REPO_ROOT/scripts/operations/monitoring/check-container-health.sh"
 HEALTH_CONFIG="$REPO_ROOT/configs/monitoring/critical-containers.conf"
+CRON_FILE="$REPO_ROOT/configs/cron/homeserver-cron"
+LOGROTATE_FILE="$REPO_ROOT/configs/logrotate/homeserver-backups"
 
 # ============================================================
 # Feature: backup-alerting, Property 2: Structured log format
@@ -907,12 +909,329 @@ test_deleted_photo_cleanup() {
 }
 
 # ============================================================
+# Feature: backup-alerting, Property 19: Cron entries use absolute paths
+# Validates: Requirements 6.3, 9.3
+# ============================================================
+test_cron_absolute_paths() {
+    run_test "Property 19: Cron entries use absolute paths"
+
+    if [[ ! -f "$CRON_FILE" ]]; then
+        print_fail "Cron file not found: $CRON_FILE"
+        return
+    fi
+
+    # Extract non-comment, non-empty lines (actual cron entries)
+    local cron_entries
+    cron_entries=$(grep -v '^\s*#' "$CRON_FILE" | grep -v '^\s*$' || true)
+
+    if [[ -z "$cron_entries" ]]; then
+        print_fail "No cron entries found in $CRON_FILE"
+        return
+    fi
+
+    # Test 1: All script paths are absolute (start with /)
+    local all_absolute=true
+    while IFS= read -r line; do
+        # Extract the command part (field 6+ in cron: min hour dom mon dow user command...)
+        local cmd
+        cmd=$(echo "$line" | awk '{for(i=7;i<=NF;i++) printf "%s ", $i; print ""}')
+        # The first token of the command should start with /
+        local script_path
+        script_path=$(echo "$cmd" | awk '{print $1}')
+        if [[ "$script_path" != /* ]]; then
+            print_fail "Cron entry has non-absolute script path: $script_path"
+            all_absolute=false
+        fi
+    done <<< "$cron_entries"
+
+    if $all_absolute; then
+        print_pass "All cron script paths are absolute"
+    fi
+
+    # Test 2: Log paths are absolute (>> /var/log/...)
+    if echo "$cron_entries" | grep -q '>> /var/log/'; then
+        print_pass "Cron log paths are absolute (/var/log/...)"
+    else
+        print_fail "Cron log paths may not be absolute"
+    fi
+
+    # Test 3: Cron contains backup entry at 02:00
+    if grep -q '0 2 \* \* \*' "$CRON_FILE"; then
+        print_pass "Cron has daily backup at 02:00"
+    else
+        print_fail "Cron missing daily backup at 02:00"
+    fi
+
+    # Test 4: Cron contains health check every 15 min
+    if grep -q '\*/15 \* \* \* \*' "$CRON_FILE"; then
+        print_pass "Cron has health check every 15 minutes"
+    else
+        print_fail "Cron missing health check every 15 minutes"
+    fi
+
+    # Test 5: Logrotate config exists with correct settings
+    if [[ -f "$LOGROTATE_FILE" ]]; then
+        print_pass "Logrotate config exists"
+    else
+        print_fail "Logrotate config not found"
+        return
+    fi
+
+    if grep -q 'rotate 30' "$LOGROTATE_FILE"; then
+        print_pass "Logrotate has 30-day retention for backup logs"
+    else
+        print_fail "Logrotate missing 30-day retention"
+    fi
+
+    if grep -q 'compress' "$LOGROTATE_FILE"; then
+        print_pass "Logrotate has compression enabled"
+    else
+        print_fail "Logrotate missing compression"
+    fi
+
+    if grep -q 'copytruncate' "$LOGROTATE_FILE"; then
+        print_pass "Logrotate uses copytruncate for health-check.log"
+    else
+        print_fail "Logrotate missing copytruncate for health-check.log"
+    fi
+}
+
+# ============================================================
+# Unit Tests: Script existence, shebang, syntax, LOC, sourcing
+# Validates: All requirements (validation coverage)
+# ============================================================
+
+# All scripts under test
+ALL_BACKUP_SCRIPTS=(
+    "$REPO_ROOT/scripts/backup/setup-das-luks.sh"
+    "$REPO_ROOT/scripts/backup/backup-all.sh"
+    "$REPO_ROOT/scripts/backup/backup-configs.sh"
+    "$REPO_ROOT/scripts/backup/backup-immich.sh"
+    "$REPO_ROOT/scripts/backup/backup-wiki.sh"
+)
+ALL_MONITORING_SCRIPTS=(
+    "$REPO_ROOT/scripts/operations/monitoring/check-container-health.sh"
+)
+ALL_SCRIPTS=("${ALL_BACKUP_SCRIPTS[@]}" "${ALL_MONITORING_SCRIPTS[@]}")
+
+test_scripts_exist() {
+    run_test "Unit: All scripts exist"
+    for script in "${ALL_SCRIPTS[@]}"; do
+        local name; name=$(basename "$script")
+        if [[ -f "$script" ]]; then
+            print_pass "$name exists"
+        else
+            print_fail "$name not found"
+        fi
+    done
+    # Config files
+    for cfg in "$HEALTH_CONFIG" "$CRON_FILE" "$LOGROTATE_FILE"; do
+        local name; name=$(basename "$cfg")
+        if [[ -f "$cfg" ]]; then
+            print_pass "$name exists"
+        else
+            print_fail "$name not found"
+        fi
+    done
+    # log-utils.sh
+    if [[ -f "$LOG_UTILS" ]]; then
+        print_pass "log-utils.sh exists"
+    else
+        print_fail "log-utils.sh not found"
+    fi
+}
+
+test_scripts_shebang_and_safety() {
+    run_test "Unit: All scripts have proper shebang and set -euo pipefail"
+    for script in "${ALL_SCRIPTS[@]}" "$LOG_UTILS"; do
+        [[ -f "$script" ]] || continue
+        local name; name=$(basename "$script")
+        local first_line; first_line=$(head -n 1 "$script")
+        if [[ "$first_line" == "#!/bin/bash" || "$first_line" == "#!/usr/bin/env bash" ]]; then
+            print_pass "$name has proper shebang"
+        else
+            print_fail "$name shebang incorrect: $first_line"
+        fi
+        # log-utils.sh is sourced, may not have pipefail at top level
+        if [[ "$name" == "log-utils.sh" ]]; then
+            continue
+        fi
+        if grep -q 'set -euo pipefail' "$script"; then
+            print_pass "$name has set -euo pipefail"
+        else
+            print_fail "$name missing set -euo pipefail"
+        fi
+    done
+}
+
+test_scripts_valid_syntax() {
+    run_test "Unit: All scripts have valid bash syntax"
+    for script in "${ALL_SCRIPTS[@]}" "$LOG_UTILS"; do
+        [[ -f "$script" ]] || continue
+        local name; name=$(basename "$script")
+        if bash -n "$script" 2>/dev/null; then
+            print_pass "$name syntax valid"
+        else
+            print_fail "$name has syntax errors"
+        fi
+    done
+}
+
+test_scripts_loc_limits() {
+    run_test "Unit: All scripts within LOC limits"
+    # Backup/operational scripts: target 150 LOC
+    # log-utils.sh: target 50 LOC
+    # check-container-health.sh: target 100 LOC
+    for script in "${ALL_BACKUP_SCRIPTS[@]}"; do
+        [[ -f "$script" ]] || continue
+        local name; name=$(basename "$script")
+        local loc; loc=$(wc -l < "$script")
+        if [[ $loc -le 150 ]]; then
+            print_pass "$name is $loc LOC (limit: 150)"
+        else
+            print_fail "$name is $loc LOC (exceeds limit: 150)"
+        fi
+    done
+    if [[ -f "$HEALTH_CHECK" ]]; then
+        local loc; loc=$(wc -l < "$HEALTH_CHECK")
+        if [[ $loc -le 100 ]]; then
+            print_pass "check-container-health.sh is $loc LOC (limit: 100)"
+        else
+            print_fail "check-container-health.sh is $loc LOC (exceeds limit: 100)"
+        fi
+    fi
+    if [[ -f "$LOG_UTILS" ]]; then
+        local loc; loc=$(wc -l < "$LOG_UTILS")
+        if [[ $loc -le 50 ]]; then
+            print_pass "log-utils.sh is $loc LOC (limit: 50)"
+        else
+            print_fail "log-utils.sh is $loc LOC (exceeds limit: 50)"
+        fi
+    fi
+}
+
+test_backup_scripts_source_log_utils() {
+    run_test "Unit: All backup scripts source log-utils.sh"
+    for script in "${ALL_BACKUP_SCRIPTS[@]}" "$HEALTH_CHECK"; do
+        [[ -f "$script" ]] || continue
+        local name; name=$(basename "$script")
+        if grep -q 'log-utils\.sh' "$script"; then
+            print_pass "$name sources log-utils.sh"
+        else
+            print_fail "$name does not source log-utils.sh"
+        fi
+    done
+}
+
+test_wiki_checks_data_dir() {
+    run_test "Unit: backup-wiki.sh checks for wiki data directory existence"
+    local wiki="$REPO_ROOT/scripts/backup/backup-wiki.sh"
+    if [[ ! -f "$wiki" ]]; then
+        print_fail "backup-wiki.sh not found"
+        return
+    fi
+    if grep -q '/mnt/data/services/wiki' "$wiki" && grep -q '! -d' "$wiki"; then
+        print_pass "backup-wiki.sh checks wiki data directory existence"
+    else
+        print_fail "backup-wiki.sh missing wiki data directory check"
+    fi
+    # Graceful skip: exits 0 when dir missing
+    if grep -q 'exit 0' "$wiki"; then
+        print_pass "backup-wiki.sh exits 0 when wiki not deployed"
+    else
+        print_fail "backup-wiki.sh missing graceful exit 0 for missing wiki"
+    fi
+}
+
+test_immich_uses_mountpoint() {
+    run_test "Unit: backup-immich.sh uses mountpoint -q (not old directory check)"
+    local immich="$REPO_ROOT/scripts/backup/backup-immich.sh"
+    if [[ ! -f "$immich" ]]; then
+        print_fail "backup-immich.sh not found"
+        return
+    fi
+    if grep -q 'mountpoint -q' "$immich"; then
+        print_pass "backup-immich.sh uses mountpoint -q"
+    else
+        print_fail "backup-immich.sh missing mountpoint -q"
+    fi
+}
+
+test_immich_uses_structured_log() {
+    run_test "Unit: backup-immich.sh uses structured log format"
+    local immich="$REPO_ROOT/scripts/backup/backup-immich.sh"
+    if [[ ! -f "$immich" ]]; then
+        print_fail "backup-immich.sh not found"
+        return
+    fi
+    if grep -q 'log_msg' "$immich"; then
+        print_pass "backup-immich.sh uses log_msg() structured logging"
+    else
+        print_fail "backup-immich.sh missing log_msg() calls"
+    fi
+}
+
+test_cron_entries() {
+    run_test "Unit: Cron file contains required entries"
+    if [[ ! -f "$CRON_FILE" ]]; then
+        print_fail "Cron file not found"
+        return
+    fi
+    if grep -q '0 2 \* \* \*' "$CRON_FILE"; then
+        print_pass "Cron has daily backup at 02:00"
+    else
+        print_fail "Cron missing daily backup at 02:00"
+    fi
+    if grep -q '\*/15 \* \* \* \*' "$CRON_FILE"; then
+        print_pass "Cron has health check every 15 minutes"
+    else
+        print_fail "Cron missing health check every 15 minutes"
+    fi
+}
+
+test_logrotate_config() {
+    run_test "Unit: Logrotate config has correct settings"
+    if [[ ! -f "$LOGROTATE_FILE" ]]; then
+        print_fail "Logrotate config not found"
+        return
+    fi
+    if grep -q 'rotate 30' "$LOGROTATE_FILE"; then
+        print_pass "Logrotate has rotate 30"
+    else
+        print_fail "Logrotate missing rotate 30"
+    fi
+    if grep -q 'compress' "$LOGROTATE_FILE"; then
+        print_pass "Logrotate has compress"
+    else
+        print_fail "Logrotate missing compress"
+    fi
+}
+
+test_containers_conf_defaults() {
+    run_test "Unit: critical-containers.conf contains default container list"
+    if [[ ! -f "$HEALTH_CONFIG" ]]; then
+        print_fail "critical-containers.conf not found"
+        return
+    fi
+    local expected=("caddy" "pihole" "immich-server" "immich-postgres" "jellyfin")
+    for name in "${expected[@]}"; do
+        if grep -q "^${name}$" "$HEALTH_CONFIG"; then
+            print_pass "Config contains $name"
+        else
+            print_fail "Config missing $name"
+        fi
+    done
+}
+
+# ============================================================
 # Run all tests
 # ============================================================
 echo "========================================"
-echo "Backup & Alerting — Property Tests"
+echo "Backup & Alerting — Test Suite"
 echo "========================================"
 
+echo ""
+echo "--- Property Tests ---"
 test_log_msg_structured_format
 test_send_alert_email_graceful_fallback
 test_das_setup_idempotency
@@ -934,11 +1253,31 @@ test_alert_email_body_fields
 test_dry_run_no_destructive_ops
 test_deleted_photo_retention
 test_deleted_photo_cleanup
+test_cron_absolute_paths
+
+echo ""
+echo "--- Unit Tests ---"
+test_scripts_exist
+test_scripts_shebang_and_safety
+test_scripts_valid_syntax
+test_scripts_loc_limits
+test_backup_scripts_source_log_utils
+test_wiki_checks_data_dir
+test_immich_uses_mountpoint
+test_immich_uses_structured_log
+test_cron_entries
+test_logrotate_config
+test_containers_conf_defaults
 
 # Summary
 echo ""
 echo "========================================"
-echo -e "Results: ${GREEN}${TESTS_PASSED} passed${NC}, ${RED}${TESTS_FAILED} failed${NC} / ${TESTS_RUN} total"
+echo "Test Summary"
+echo "========================================"
+echo "Tests run:    $TESTS_RUN"
+echo -e "Tests passed: ${GREEN}$TESTS_PASSED${NC}"
+echo -e "Tests failed: ${RED}$TESTS_FAILED${NC}"
+echo "$TESTS_PASSED / $((TESTS_PASSED + TESTS_FAILED)) assertions passed across $TESTS_RUN test suites"
 echo "========================================"
 
 if [[ ${#FAILED_MESSAGES[@]} -gt 0 ]]; then
@@ -949,4 +1288,10 @@ if [[ ${#FAILED_MESSAGES[@]} -gt 0 ]]; then
     done
 fi
 
-exit "$TESTS_FAILED"
+if [[ $TESTS_FAILED -eq 0 ]]; then
+    echo -e "${GREEN}✓ All tests passed!${NC}"
+    exit 0
+else
+    echo -e "${RED}✗ Some tests failed${NC}"
+    exit 1
+fi
