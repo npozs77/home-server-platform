@@ -1224,6 +1224,65 @@ test_containers_conf_defaults() {
 }
 
 # ============================================================
+# Unit Test: Backup scripts source BACKUP_MOUNT from foundation.env
+# Validates: Scripts use env vars instead of hardcoded paths
+# ============================================================
+test_backup_scripts_use_env_vars() {
+    run_test "Unit: Backup scripts source BACKUP_MOUNT from foundation.env (not hardcoded)"
+
+    # All backup scripts that use BACKUP_MOUNT
+    local scripts_to_check=(
+        "$SETUP_DAS"
+        "$BACKUP_ALL"
+        "$BACKUP_CONFIGS"
+        "$REPO_ROOT/scripts/backup/backup-immich.sh"
+        "$REPO_ROOT/scripts/backup/backup-wiki.sh"
+    )
+
+    for script in "${scripts_to_check[@]}"; do
+        [[ -f "$script" ]] || continue
+        local name; name=$(basename "$script")
+
+        # Test: script sources env-utils.sh (which provides load_env_files)
+        if grep -q 'env-utils\.sh' "$script"; then
+            print_pass "$name sources env-utils.sh"
+        else
+            print_fail "$name does not source env-utils.sh"
+        fi
+
+        # Test: script calls load_env_files
+        if grep -q 'load_env_files' "$script"; then
+            print_pass "$name calls load_env_files"
+        else
+            print_fail "$name does not call load_env_files"
+        fi
+
+        # Test: BACKUP_MOUNT is NOT hardcoded as a simple assignment (should use env var or default)
+        # Acceptable: BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}" (env with fallback)
+        # Not acceptable: BACKUP_MOUNT="/mnt/backup" (hardcoded)
+        if grep -q '^BACKUP_MOUNT="/mnt/backup"' "$script"; then
+            print_fail "$name hardcodes BACKUP_MOUNT (should use \${BACKUP_MOUNT:-/mnt/backup})"
+        else
+            print_pass "$name does not hardcode BACKUP_MOUNT"
+        fi
+    done
+
+    # Test: setup-das-luks.sh uses BACKUP_DISK from env
+    if grep -q 'BACKUP_DISK:-' "$SETUP_DAS" || grep -q '${BACKUP_DISK' "$SETUP_DAS"; then
+        print_pass "setup-das-luks.sh uses BACKUP_DISK from env with fallback"
+    else
+        print_fail "setup-das-luks.sh does not use BACKUP_DISK from env"
+    fi
+
+    # Test: setup-das-luks.sh uses BACKUP_MAPPER from env
+    if grep -q 'BACKUP_MAPPER:-' "$SETUP_DAS" || grep -q '${BACKUP_MAPPER' "$SETUP_DAS"; then
+        print_pass "setup-das-luks.sh uses BACKUP_MAPPER from env with fallback"
+    else
+        print_fail "setup-das-luks.sh does not use BACKUP_MAPPER from env"
+    fi
+}
+
+# ============================================================
 # Run all tests
 # ============================================================
 echo "========================================"
@@ -1262,6 +1321,7 @@ test_scripts_shebang_and_safety
 test_scripts_valid_syntax
 test_scripts_loc_limits
 test_backup_scripts_source_log_utils
+test_backup_scripts_use_env_vars
 test_wiki_checks_data_dir
 test_immich_uses_mountpoint
 test_immich_uses_structured_log

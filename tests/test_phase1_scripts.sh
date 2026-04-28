@@ -452,10 +452,28 @@ test_property_config_persistence() {
     # Check load_config sources file
     if grep -qE "source.*CONFIG" scripts/deploy/deploy-phase1-foundation.sh; then
         print_pass "load_config() sources file"
-        return 0
     else
         print_fail "load_config() does not source file"
         return 1
+    fi
+
+    # Check save_config includes backup DAS variables
+    local save_block
+    save_block=$(sed -n '/^save_config/,/^}/p' scripts/deploy/deploy-phase1-foundation.sh)
+    if echo "$save_block" | grep -q 'BACKUP_DISK'; then
+        print_pass "save_config() includes BACKUP_DISK"
+    else
+        print_fail "save_config() missing BACKUP_DISK"
+    fi
+    if echo "$save_block" | grep -q 'BACKUP_MOUNT'; then
+        print_pass "save_config() includes BACKUP_MOUNT"
+    else
+        print_fail "save_config() missing BACKUP_MOUNT"
+    fi
+    if echo "$save_block" | grep -q 'BACKUP_MAPPER'; then
+        print_pass "save_config() includes BACKUP_MAPPER"
+    else
+        print_fail "save_config() missing BACKUP_MAPPER"
     fi
 }
 
