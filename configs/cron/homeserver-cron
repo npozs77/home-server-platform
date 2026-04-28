@@ -1,0 +1,12 @@
+# Homeserver scheduled jobs
+# Install: sudo cp /opt/homeserver/configs/cron/homeserver-cron /etc/cron.d/homeserver-cron
+# After install: sudo chmod 644 /etc/cron.d/homeserver-cron
+#
+# NOTE: This replaces the old user crontab entry for check-container-health.sh.
+# Remove old entry: crontab -e → delete the */30 line, or run: crontab -l | grep -v check-container-health | crontab -
+
+# Daily backup at 02:00
+0 2 * * * root /opt/homeserver/scripts/backup/backup-all.sh >> /var/log/homeserver/backup-$(date +\%Y\%m\%d).log 2>&1
+
+# Container health check every 15 minutes
+*/15 * * * * root /opt/homeserver/scripts/operations/monitoring/check-container-health.sh >> /var/log/homeserver/health-check.log 2>&1

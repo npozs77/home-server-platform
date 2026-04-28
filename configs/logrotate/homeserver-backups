@@ -1,0 +1,21 @@
+# Homeserver log rotation
+# Install: sudo cp /opt/homeserver/configs/logrotate/homeserver-backups /etc/logrotate.d/homeserver-backups
+
+/var/log/homeserver/backup-*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+}
+
+/var/log/homeserver/health-check.log {
+    weekly
+    rotate 4
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
