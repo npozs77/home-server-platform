@@ -223,7 +223,7 @@ validate_caddy_https() {
 }
 
 validate_certificate_trust() {
-    if docker ps | grep -q caddy; then
+    if docker ps --filter "name=caddy" --filter "status=running" --format "{{.Names}}" | grep -q caddy; then
         # Check both: exported copy and original in Caddy data volume
         if [[ -f "/opt/homeserver/configs/caddy/root-ca.crt" ]]; then
             print_success "Root CA certificate exported"
