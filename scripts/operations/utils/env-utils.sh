@@ -1,19 +1,54 @@
 #!/bin/bash
 set -euo pipefail
 
-# Utility Library: Environment Variable Validation
-# Purpose: Validate environment variables and configuration values
-# Functions: validate_required_vars, validate_ip_address, validate_email, validate_domain
+# Utility Library: Environment Variable Validation and Loading
+# Purpose: Load and validate environment variables and configuration values
+# Functions: load_env_files, validate_required_vars, validate_ip_address, validate_email, validate_domain
 # Usage: source this file, then call functions
 #
 # Example:
 #   source scripts/operations/utils/env-utils.sh
+#   load_env_files
 #   validate_required_vars "SERVER_IP" "ADMIN_USER" || exit 1
 #   validate_ip_address "$SERVER_IP" || exit 1
 
-# Source output utilities for error messages
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/output-utils.sh"
+# Source output utilities for error messages (if not already loaded)
+if ! command -v print_success &>/dev/null; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "${SCRIPT_DIR}/output-utils.sh"
+fi
+
+# Load environment variables from configuration files
+# Sources foundation.env and services.env if they exist
+# Returns:
+#   0 if at least one config file was loaded
+#   1 if no config files found
+# Example:
+#   load_env_files
+load_env_files() {
+    local loaded=0
+    
+    if [[ -f /opt/homeserver/configs/foundation.env ]]; then
+        source /opt/homeserver/configs/foundation.env
+        loaded=1
+    fi
+    
+    if [[ -f /opt/homeserver/configs/services.env ]]; then
+        source /opt/homeserver/configs/services.env
+        loaded=1
+    fi
+    
+    if [[ -f /opt/homeserver/configs/secrets.env ]]; then
+        source /opt/homeserver/configs/secrets.env
+        loaded=1
+    fi
+    
+    if [[ $loaded -eq 0 ]]; then
+        return 1
+    fi
+    
+    return 0
+}
 
 # Validate that required environment variables are set and non-empty
 # Parameters:
@@ -86,7 +121,7 @@ validate_ip_address() {
 #   0 if valid email address
 #   1 if invalid email address
 # Example:
-#   validate_email "user@example.com"
+#   validate_email "user@mydomain.com"
 validate_email() {
     local email="$1"
     
@@ -111,7 +146,7 @@ validate_email() {
 #   0 if valid domain name
 #   1 if invalid domain name
 # Example:
-#   validate_domain "example.com"
+#   validate_domain "mydomain.com"
 validate_domain() {
     local domain="$1"
     
