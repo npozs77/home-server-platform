@@ -2,15 +2,13 @@
 *.key
 *.pem
 *.env
-!*.yaml.example
-!*.yml.example
 !*.env.example
 .env
 *.secret
-*.yaml
 
 # Backup files
 *.backup
+*.backup.*
 *.bak
 *~
 
@@ -24,15 +22,32 @@ Thumbs.db
 *.swp
 *.swo
 
-# sensitive configs
-configs/caddy/*
-!configs/caddy/Caddyfile.example
-!configs/caddy/pages
-configs/caddy/pages/*
-!configs/caddy/pages/starting.html.example
+# Deployed configs (not examples — real values, may contain PII)
+configs/caddy/Caddyfile
+configs/caddy/Caddyfile.backup.*
+configs/caddy/root-ca.crt
+configs/caddy/data/
+configs/caddy/config/
+configs/caddy/pages/starting.html
+configs/docker-compose/*.yml
+!configs/docker-compose/*.yml.example
+configs/samba/smb.conf
 configs/pihole/
 configs/netdata/
-configs/samba/
-configs/docker-compose/
 configs/.env
 configs/*-config.env
+
+# Service persistent data
+configs/docker-compose/*/data/
+configs/docker-compose/*/config/
+
+# Stray scripts in root (should be in scripts/)
+/backup-configs.sh
+
+# PII-sensitive config
+
+# Old files, input docs, local-only
+OLD/
+input/
+.kiro/hooks/
+.gitleaks.toml
