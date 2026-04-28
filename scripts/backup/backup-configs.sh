@@ -8,8 +8,6 @@
 set -euo pipefail
 
 SCRIPT_NAME="backup-configs"
-BACKUP_MOUNT="/mnt/backup"
-BACKUP_DEST="${BACKUP_MOUNT}/configs"
 DRY_RUN=false
 DRY_RUN_FLAG=""
 
@@ -19,6 +17,9 @@ UTILS_DIR="${SCRIPT_DIR}/../operations/utils"
 source "${UTILS_DIR}/log-utils.sh"
 source "${UTILS_DIR}/env-utils.sh"
 load_env_files || log_msg "WARN" "$SCRIPT_NAME" "Could not load env files"
+
+BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
+BACKUP_DEST="${BACKUP_MOUNT}/configs"
 
 # Parse arguments
 for arg in "$@"; do

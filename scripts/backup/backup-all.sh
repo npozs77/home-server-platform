@@ -7,7 +7,6 @@
 set -euo pipefail
 
 SCRIPT_NAME="backup-all"
-BACKUP_MOUNT="/mnt/backup"
 CRON_LOG_DIR="/var/log/homeserver"
 LOG_DATE=$(date '+%Y%m%d')
 DRY_RUN=false
@@ -26,6 +25,8 @@ UTILS_DIR="${BACKUP_DIR}/../operations/utils"
 source "${UTILS_DIR}/log-utils.sh"
 source "${UTILS_DIR}/env-utils.sh"
 load_env_files || log_msg "WARN" "$SCRIPT_NAME" "Could not load env files"
+
+BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
 
 # Ensure log directory exists
 mkdir -p "$CRON_LOG_DIR" 2>/dev/null || true

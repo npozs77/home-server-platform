@@ -8,8 +8,6 @@
 set -euo pipefail
 
 SCRIPT_NAME="backup-wiki"
-BACKUP_MOUNT="/mnt/backup"
-BACKUP_DEST="${BACKUP_MOUNT}/wiki"
 WIKI_DATA_DIR="/mnt/data/services/wiki"
 WIKI_DB_CONTAINER="wiki-db"
 DRY_RUN=false
@@ -29,6 +27,9 @@ UTILS_DIR="${SCRIPT_DIR}/../operations/utils"
 source "${UTILS_DIR}/log-utils.sh"
 source "${UTILS_DIR}/env-utils.sh"
 load_env_files || log_msg "WARN" "$SCRIPT_NAME" "Could not load env files"
+
+BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
+BACKUP_DEST="${BACKUP_MOUNT}/wiki"
 
 # Mount guard
 verify_mount() {

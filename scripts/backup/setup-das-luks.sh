@@ -12,10 +12,11 @@ UTILS_DIR="${SCRIPT_DIR}/../operations/utils"
 source "${UTILS_DIR}/log-utils.sh"
 source "${UTILS_DIR}/output-utils.sh"
 source "${UTILS_DIR}/env-utils.sh"
+load_env_files || true
 
 DRY_RUN=false; NO_LUKS=false
-DEVICE="/dev/sdb2"; MAPPER_NAME="backup_crypt"; MAPPER_DEV="/dev/mapper/${MAPPER_NAME}"
-MOUNT_POINT="/mnt/backup"; KEY_FILE="/root/.luks-key"; DATA_DEVICE="/dev/nvme0n1p3"
+DEVICE="${BACKUP_DISK:-/dev/sdb2}"; MAPPER_NAME="${BACKUP_MAPPER:-backup_crypt}"; MAPPER_DEV="/dev/mapper/${MAPPER_NAME}"
+MOUNT_POINT="${BACKUP_MOUNT:-/mnt/backup}"; KEY_FILE="/root/.luks-key"; DATA_DEVICE="${DATA_DISK:-/dev/nvme0n1p3}"
 
 for arg in "$@"; do
     case "$arg" in

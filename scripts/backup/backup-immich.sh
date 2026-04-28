@@ -6,7 +6,6 @@
 
 set -euo pipefail
 SCRIPT_NAME="backup-immich"
-BACKUP_MOUNT="/mnt/backup"
 DRY_RUN=false
 DRY_RUN_FLAG=""
 BACKUP_DEST=""
@@ -18,6 +17,15 @@ for arg in "$@"; do
         *) BACKUP_DEST="$arg" ;;
     esac
 done
+
+# Source utilities (before using BACKUP_MOUNT from foundation.env)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+UTILS_DIR="${SCRIPT_DIR}/../operations/utils"
+source "${UTILS_DIR}/log-utils.sh"
+source "${UTILS_DIR}/env-utils.sh"
+load_env_files || log_msg "WARN" "$SCRIPT_NAME" "Could not load env files"
+
+BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
 BACKUP_DEST="${BACKUP_DEST:-${BACKUP_MOUNT}/immich}"
 
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
@@ -28,13 +36,6 @@ DB_NAME="${DB_DATABASE_NAME:-immich}"
 UPLOAD_DIR="/mnt/data/services/immich/upload"
 MEDIA_PHOTOS_DIR="/mnt/data/media/Photos"
 FAMILY_PHOTOS_DIR="/mnt/data/family/Photos"
-
-# Source utilities
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-UTILS_DIR="${SCRIPT_DIR}/../operations/utils"
-source "${UTILS_DIR}/log-utils.sh"
-source "${UTILS_DIR}/env-utils.sh"
-load_env_files || log_msg "WARN" "$SCRIPT_NAME" "Could not load env files"
 
 # Mount guard
 verify_mount() {
