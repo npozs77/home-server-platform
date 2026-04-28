@@ -43,11 +43,11 @@ WIKI_BASE="/mnt/data/services/wiki"
 # Format: "permissions:owner:group"
 # - postgres/: Owned by postgres process inside container; set initial ownership
 #   to root:root with 700 — Docker/postgres will manage internally
-# - git/: Bare Git repository for Wiki.js Git storage module; writable by
-#   wiki-server container process; root:root with 755 initially
+# - content/: Wiki.js Local File System storage module output; writable by
+#   wiki-server container process (runs as uid 1000 / node); 755 initially
 declare -A WIKI_DIRS=(
     ["${WIKI_BASE}/postgres"]="700:root:root"
-    ["${WIKI_BASE}/git"]="755:root:root"
+    ["${WIKI_BASE}/content"]="755:1000:1000"
 )
 
 # Verify and fix permissions on a directory
@@ -81,14 +81,6 @@ if [[ "$all_exist" == true ]]; then
             IFS=':' read -r perms owner group <<< "${WIKI_DIRS[$dir]}"
             verify_permissions "$dir" "$perms" "$owner" "$group"
         done
-        # Verify bare Git repo is initialized
-        if [[ ! -f "${WIKI_BASE}/git/HEAD" ]]; then
-            print_info "Initializing bare Git repository at ${WIKI_BASE}/git..."
-            git init --bare "${WIKI_BASE}/git" --quiet
-            print_success "Bare Git repository initialized"
-        else
-            print_info "Bare Git repository already initialized at ${WIKI_BASE}/git"
-        fi
         print_success "All Wiki.js directories verified"
     else
         print_info "[DRY-RUN] Would verify permissions on existing directories"
@@ -116,8 +108,6 @@ if [[ "$DRY_RUN" == true ]]; then
             print_info "  - $dir (already exists, would verify permissions)"
         fi
     done
-
-    print_info "[DRY-RUN] Would initialize bare Git repository at ${WIKI_BASE}/git"
 else
     print_info "Creating Wiki.js directories..."
 
@@ -145,15 +135,6 @@ else
             verify_permissions "$dir" "$perms" "$owner" "$group"
         fi
     done
-
-    # Initialize bare Git repository for Wiki.js Git storage module
-    if [[ ! -f "${WIKI_BASE}/git/HEAD" ]]; then
-        print_info "Initializing bare Git repository at ${WIKI_BASE}/git..."
-        git init --bare "${WIKI_BASE}/git" --quiet
-        print_success "Bare Git repository initialized"
-    else
-        print_info "Bare Git repository already initialized at ${WIKI_BASE}/git"
-    fi
 
     print_success "All Wiki.js directories created"
 fi
