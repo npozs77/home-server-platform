@@ -161,6 +161,7 @@ This document outlines planned future phases for the home media server platform.
 **Container Lifecycle Management**
 - On-demand container start (start on first access)
 - Idle shutdown (stop after inactivity)
+- Automated container upgrades (pull, recreate, health check, rollback on failure)
 - Resource optimization
 - Health monitoring
 
