@@ -189,6 +189,23 @@ test_secrets_env_not_in_git() {
     (grep -q "secrets.env" .gitignore || grep -q "\*.env" .gitignore) && print_pass "secrets.env in .gitignore" || print_fail "secrets.env not in .gitignore"
 }
 
+# --- Task Module Pattern Tests ---
+
+test_dns_script_json_building() {
+    run_test "DNS script builds valid JSON array (not naive sed append)"
+    local dns_script="scripts/deploy/tasks/task-ph4-04-configure-dns.sh"
+    [[ -f "$dns_script" ]] || { print_fail "task-ph4-04-configure-dns.sh not found"; return; }
+    # Must NOT use the old fragile sed pattern that mixes quoted/unquoted entries
+    if grep -q 'sed.*s/\].*DNS_RECORD.*\]' "$dns_script"; then
+        print_fail "DNS script uses fragile sed append (should rebuild full JSON array)"
+    else
+        print_pass "DNS script does not use fragile sed append"
+    fi
+    # Must rebuild array with proper quoting (ENTRIES array pattern)
+    grep -q 'ENTRIES=()' "$dns_script" && print_pass "DNS script rebuilds array from scratch (ENTRIES pattern)" || print_fail "DNS script missing ENTRIES array rebuild"
+    grep -q 'NEW_HOSTS_JSON' "$dns_script" && print_pass "DNS script builds NEW_HOSTS_JSON" || print_fail "DNS script missing NEW_HOSTS_JSON build"
+}
+
 # --- Docker Compose Example Tests ---
 
 test_docker_compose_example_exists() {
@@ -227,6 +244,7 @@ main() {
     test_config_file_references || true
     test_immich_config_variables || true
     test_task_module_delegation || true
+    test_dns_script_json_building || true
     test_services_env_immich_vars || true
     test_services_env_uuid_placeholders || true
     test_secrets_env_immich_vars || true

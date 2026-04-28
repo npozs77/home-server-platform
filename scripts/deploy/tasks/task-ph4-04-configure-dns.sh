@@ -91,15 +91,30 @@ if [[ "$DRY_RUN" == true ]]; then
 else
     print_info "Adding Immich DNS record to Pi-hole dns.hosts..."
 
-    # Append new entry to the existing JSON array
-    # If current is empty "[]", create new array; otherwise inject before closing "]"
-    TRIMMED=$(echo "$CURRENT_JSON" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    if [[ "$TRIMMED" == "[]" ]]; then
-        NEW_HOSTS_JSON="[\"${DNS_RECORD}\"]"
-    else
-        # Insert new entry before the closing bracket
-        NEW_HOSTS_JSON=$(echo "$TRIMMED" | sed "s/]$/, \"${DNS_RECORD}\"]/" )
+    # Rebuild the full JSON array from scratch to ensure valid quoting.
+    # pihole-FTL --config dns.hosts returns entries without JSON quotes, e.g.:
+    #   [ 192.168.1.2 foo.com, 192.168.1.2 bar.com ]
+    # But setting requires valid JSON: ["192.168.1.2 foo.com", "192.168.1.2 bar.com"]
+    ENTRIES=()
+    RAW=$(echo "$CURRENT_JSON" | sed 's/^\[//;s/\]$//')
+    if [[ -n "$RAW" && "$RAW" != " " ]]; then
+        while IFS= read -r entry; do
+            entry=$(echo "$entry" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            # Strip any existing quotes
+            entry=$(echo "$entry" | sed 's/^"//;s/"$//')
+            [[ -n "$entry" ]] && ENTRIES+=("$entry")
+        done < <(echo "$RAW" | tr ',' '\n')
     fi
+    # Add the new record
+    ENTRIES+=("${DNS_RECORD}")
+
+    # Build valid JSON array
+    NEW_HOSTS_JSON="["
+    for i in "${!ENTRIES[@]}"; do
+        [[ $i -gt 0 ]] && NEW_HOSTS_JSON+=", "
+        NEW_HOSTS_JSON+="\"${ENTRIES[$i]}\""
+    done
+    NEW_HOSTS_JSON+="]"
 
     # Apply the updated dns.hosts array
     print_info "Setting dns.hosts: ${NEW_HOSTS_JSON}"
