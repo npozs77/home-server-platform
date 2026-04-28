@@ -82,3 +82,22 @@ validate_secrets_not_tracked() {
 validate_git_commit() {
     git -C /opt/homeserver status | grep -q "nothing to commit, working tree clean"
 }
+
+
+# ── Checks Registry (single source of truth) ──
+# Used by: deploy-phase4-photo-management.sh validate_all(), validate-all.sh
+PHASE4_CHECKS=(
+    "Immich Directories:validate_immich_directories"
+    "Docker Compose File:validate_compose_file"
+    "Immich Containers:validate_immich_containers"
+    "Caddy Route:validate_caddy_route"
+    "DNS Record (Immich):validate_dns_record"
+    "HTTPS Access (Immich):validate_https_access"
+    "External Libraries:validate_external_libraries"
+    "Upload Writable:validate_upload_writable"
+    "Samba Upload Shares:validate_samba_upload_shares"
+    "Backup Script:validate_backup_script"
+    "Version Pinned:validate_version_pinned"
+    "Secrets Not Tracked:validate_secrets_not_tracked"
+    "Git Clean:validate_git_commit"
+)

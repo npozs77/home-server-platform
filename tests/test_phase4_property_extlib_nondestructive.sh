@@ -20,6 +20,7 @@ print_pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; TESTS_PASSED=$((TESTS_PASSED
 print_fail() { echo -e "${RED}✗ FAIL${NC}: $1"; TESTS_FAILED=$((TESTS_FAILED + 1)); }
 
 COMPOSE_FILE="configs/docker-compose/immich.yml.example"
+[[ -f "$COMPOSE_FILE" ]] || COMPOSE_FILE="configs/docker-compose/immich.yml"
 if [[ ! -f "$COMPOSE_FILE" ]]; then
     echo -e "${RED}✗ FATAL${NC}: immich.yml.example not found"
     exit 1

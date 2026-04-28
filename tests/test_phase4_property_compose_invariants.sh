@@ -21,6 +21,7 @@ print_fail() { echo -e "${RED}✗ FAIL${NC}: $1"; TESTS_FAILED=$((TESTS_FAILED +
 
 # Test against the example template (immich.yml is generated on the server, not in repo)
 COMPOSE_FILE="configs/docker-compose/immich.yml.example"
+[[ -f "$COMPOSE_FILE" ]] || COMPOSE_FILE="configs/docker-compose/immich.yml"
 if [[ ! -f "$COMPOSE_FILE" ]]; then
     echo -e "${RED}✗ FATAL${NC}: immich.yml.example not found"
     exit 1

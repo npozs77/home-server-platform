@@ -319,3 +319,27 @@ validate_netdata_container() { validate_netdata_service; }
 validate_log_rotation() {
     validate_logrotate_caddy && validate_logrotate_pihole && validate_logrotate_msmtp
 }
+
+
+# ── Checks Registry (single source of truth) ──
+# Used by: deploy-phase2-infrastructure.sh validate_all(), validate-all.sh
+PHASE2_CHECKS=(
+    "Data Structure:validate_data_structure"
+    "Family Directories:validate_family_subdirectories"
+    "Backup Directories:validate_backup_subdirectories"
+    "Compose Files:validate_services_yaml"
+    "Caddy Service:validate_caddy_service"
+    "Caddy HTTPS:validate_caddy_https"
+    "CA Certificate:validate_certificate_trust"
+    "Pi-hole Service:validate_dns_service"
+    "Pi-hole Web UI:validate_pihole_web_ui"
+    "DNS Resolution:validate_dns_resolution"
+    "External DNS:validate_external_dns"
+    "msmtp Service:validate_smtp_service"
+    "msmtp Test:validate_smtp_test"
+    "Netdata Service:validate_netdata_service"
+    "Netdata Dashboard:validate_netdata_dashboard"
+    "Logrotate Caddy:validate_logrotate_caddy"
+    "Logrotate Pi-hole:validate_logrotate_pihole"
+    "Logrotate msmtp:validate_logrotate_msmtp"
+)

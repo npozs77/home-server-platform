@@ -164,3 +164,23 @@ validate_jellyfin_dns() {
 validate_git_commit() {
     git -C /opt/homeserver status | grep -q "nothing to commit, working tree clean"
 }
+
+
+# ── Checks Registry (single source of truth) ──
+# Used by: deploy-phase3-core-services.sh validate_all(), validate-all.sh
+PHASE3_CHECKS=(
+    "Samba Container:validate_samba_container"
+    "Personal Folders:validate_personal_folders"
+    "Family Folders:validate_family_folders"
+    "Media Folders:validate_media_folders"
+    "Personal Shares:validate_personal_shares"
+    "Family Share:validate_family_share"
+    "Media Share:validate_media_share"
+    "Recycle Bin:validate_recycle_bin"
+    "User Scripts:validate_user_scripts"
+    "Jellyfin Container:validate_jellyfin_container"
+    "Jellyfin HTTPS:validate_jellyfin_https"
+    "Jellyfin Media Access:validate_jellyfin_media_access"
+    "DNS Record (Jellyfin):validate_jellyfin_dns"
+    "Git Commit:validate_git_commit"
+)

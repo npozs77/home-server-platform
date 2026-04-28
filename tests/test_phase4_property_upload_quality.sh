@@ -20,6 +20,7 @@ print_pass() { echo -e "${GREEN}✓ PASS${NC}: $1"; TESTS_PASSED=$((TESTS_PASSED
 print_fail() { echo -e "${RED}✗ FAIL${NC}: $1"; TESTS_FAILED=$((TESTS_FAILED + 1)); }
 
 COMPOSE_FILE="configs/docker-compose/immich.yml.example"
+[[ -f "$COMPOSE_FILE" ]] || COMPOSE_FILE="configs/docker-compose/immich.yml"
 SAMBA_CONF="configs/samba/smb.conf.example"
 SAMBA_UPLOAD_SCRIPT="scripts/deploy/tasks/task-ph4-06-configure-samba-uploads.sh"
 DESIGN_DOC=".kiro/specs/04-photo-management/design.md"

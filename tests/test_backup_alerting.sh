@@ -88,11 +88,20 @@ test_send_alert_email_graceful_fallback() {
     local exit_code=0
     local output
     output=$(bash -c "
-        export PATH='/usr/bin:/bin'
+        # Hide msmtp by creating a temp PATH without it
+        TMPBIN=\$(mktemp -d)
+        for dir in /usr/bin /bin; do
+            for cmd in \$dir/*; do
+                [[ \$(basename \$cmd) == msmtp ]] && continue
+                ln -sf \"\$cmd\" \"\$TMPBIN/\" 2>/dev/null || true
+            done
+        done
+        export PATH=\"\$TMPBIN\"
         export ADMIN_EMAIL='test@mydomain.com'
         export SCRIPT_NAME='test-fallback'
         source '$LOG_UTILS'
         send_alert_email 'Test Subject' 'Test Body'
+        rm -rf \"\$TMPBIN\"
     " 2>&1) || exit_code=$?
 
     if [[ $exit_code -eq 0 ]]; then

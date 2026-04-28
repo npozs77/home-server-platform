@@ -339,3 +339,19 @@ validate_shell_environment() {
     
     [[ "$status" == "PASS" ]] && return 0 || return 1
 }
+
+
+# ── Checks Registry (single source of truth) ──
+# Used by: deploy-phase1-foundation.sh validate_all(), validate-all.sh
+PHASE1_CHECKS=(
+    "SSH Hardening:validate_ssh_hardening"
+    "UFW Firewall:validate_ufw_firewall"
+    "fail2ban:validate_fail2ban"
+    "Docker:validate_docker"
+    "Git Repository:validate_git_repository"
+    "Unattended-upgrades:validate_unattended_upgrades"
+    "LUKS Encryption:validate_luks_encryption"
+    "Docker Group:validate_docker_group"
+    "Essential Tools:validate_essential_tools"
+    "Shell Environment:validate_shell_environment"
+)

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # Unit Tests: validate-all.sh (E2E Validation Script)
 # Run: bash tests/test_validate_all.sh

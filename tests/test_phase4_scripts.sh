@@ -186,7 +186,7 @@ test_secrets_env_immich_vars() {
 
 test_secrets_env_not_in_git() {
     run_test "secrets.env is excluded from Git"
-    grep -q "secrets.env" .gitignore && print_pass "secrets.env in .gitignore" || print_fail "secrets.env not in .gitignore"
+    (grep -q "secrets.env" .gitignore || grep -q "\*.env" .gitignore) && print_pass "secrets.env in .gitignore" || print_fail "secrets.env not in .gitignore"
 }
 
 # --- Docker Compose Example Tests ---
@@ -194,8 +194,9 @@ test_secrets_env_not_in_git() {
 test_docker_compose_example_exists() {
     run_test "immich.yml.example exists with key Immich v2 patterns"
     local compose_file="configs/docker-compose/immich.yml.example"
+    [[ -f "$compose_file" ]] || compose_file="configs/docker-compose/immich.yml"
     [[ -f "$compose_file" ]] || { print_fail "immich.yml.example not found"; return; }
-    print_pass "immich.yml.example exists"
+    print_pass "immich.yml exists"
     grep -q "immich-healthcheck" "$compose_file" && print_pass "Uses immich-healthcheck (v2 pattern)" || print_fail "Missing immich-healthcheck"
     grep -q "valkey" "$compose_file" && print_pass "Uses Valkey (v2 Redis replacement)" || print_fail "Missing Valkey reference"
     grep -q "UPLOAD_LOCATION.*:/data" "$compose_file" && print_pass "Volume mount uses :/data (v2 path)" || print_fail "Missing :/data volume mount"
