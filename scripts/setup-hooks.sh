@@ -1,28 +1,35 @@
 #!/bin/bash
 # Install git hooks and gitleaks config for this repository
 # Run once after cloning: bash scripts/setup-hooks.sh
+# Non-interactive: bash scripts/setup-hooks.sh --domain example.net --username johndoe --gituser jdoe42
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK_DIR="${REPO_ROOT}/.git/hooks"
+DOMAIN="" USERNAME="" GITUSER=""
 
-# Pre-commit: gitleaks PII/secret scanning
+# Parse args
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --domain) DOMAIN="$2"; shift 2 ;;
+        --username) USERNAME="$2"; shift 2 ;;
+        --gituser) GITUSER="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+
+# Pre-commit hook
 cat > "${HOOK_DIR}/pre-commit" << 'EOF'
 #!/bin/bash
-# Pre-commit hook: run gitleaks to catch PII and secrets before commit
-# Skip: git commit --no-verify
-
 if ! command -v gitleaks &>/dev/null; then
     echo "⚠ gitleaks not installed — skipping PII check (brew install gitleaks)"
     exit 0
 fi
-
 if [[ ! -f .gitleaks.toml ]]; then
     echo "⚠ .gitleaks.toml not found — run scripts/setup-hooks.sh to configure PII rules"
     exit 0
 fi
-
 gitleaks protect --staged --config .gitleaks.toml --verbose
 EOF
 chmod +x "${HOOK_DIR}/pre-commit"
@@ -30,41 +37,44 @@ echo "✓ Pre-commit hook installed"
 
 # Generate .gitleaks.toml if missing
 if [[ ! -f "${REPO_ROOT}/.gitleaks.toml" ]]; then
-    echo ""
-    echo "Configure PII detection rules (leave blank to skip a pattern):"
-    read -p "  Real domain to detect (e.g. example.net): " domain
-    read -p "  Real username to detect (e.g. johndoe): " username
-    read -p "  Real git username to detect (e.g. jdoe42): " gituser
+    # Interactive mode if no args provided
+    if [[ -z "$DOMAIN" && -z "$USERNAME" && -z "$GITUSER" ]]; then
+        echo ""
+        echo "Configure PII detection rules (leave blank to skip):"
+        read -p "  Real domain (e.g. example.net): " DOMAIN
+        read -p "  Real username (e.g. johndoe): " USERNAME
+        read -p "  Real git username (e.g. jdoe42): " GITUSER
+    fi
 
     cat > "${REPO_ROOT}/.gitleaks.toml" << TOML
 [extend]
 useDefault = true
 TOML
 
-    [[ -n "$domain" ]] && cat >> "${REPO_ROOT}/.gitleaks.toml" << TOML
+    [[ -n "$DOMAIN" ]] && cat >> "${REPO_ROOT}/.gitleaks.toml" << TOML
 
 [[rules]]
 id = "real-domain"
 description = "Hardcoded real domain"
-regex = '''${domain//./\\.}'''
+regex = '''${DOMAIN//./\\.}'''
 tags = ["pii", "domain"]
 TOML
 
-    [[ -n "$username" ]] && cat >> "${REPO_ROOT}/.gitleaks.toml" << TOML
+    [[ -n "$USERNAME" ]] && cat >> "${REPO_ROOT}/.gitleaks.toml" << TOML
 
 [[rules]]
 id = "real-username"
 description = "Hardcoded real username"
-regex = '''${username}'''
+regex = '''${USERNAME}'''
 tags = ["pii", "username"]
 TOML
 
-    [[ -n "$gituser" ]] && cat >> "${REPO_ROOT}/.gitleaks.toml" << TOML
+    [[ -n "$GITUSER" ]] && cat >> "${REPO_ROOT}/.gitleaks.toml" << TOML
 
 [[rules]]
 id = "real-git-username"
 description = "Hardcoded real git username"
-regex = '''${gituser}'''
+regex = '''${GITUSER}'''
 tags = ["pii", "username"]
 TOML
 
@@ -84,4 +94,4 @@ else
 fi
 
 echo ""
-echo "Requires: gitleaks (brew install gitleaks / https://github.com/gitleaks/gitleaks)"
+echo "Done. Requires: gitleaks (brew install gitleaks / https://github.com/gitleaks/gitleaks)"
