@@ -600,8 +600,9 @@ docker inspect <container> --format='{{json .State.Health}}' | jq
 
 **Automated health monitoring**:
 - Script: `/opt/homeserver/scripts/operations/monitoring/check-container-health.sh`
-- Runs every 5 minutes via cron
-- Sends email alert if container unhealthy
+- Runs every 15 minutes via `/etc/cron.d/homeserver-cron`
+- Reads container list from `configs/monitoring/critical-containers.conf`
+- Sends consolidated email alert if any container unhealthy or missing
 - Reference: docs/12-runbooks.md for troubleshooting
 
 **HEALTHCHECK configuration**:

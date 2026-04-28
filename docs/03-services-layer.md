@@ -64,6 +64,7 @@ docker exec jellyfin curl -f http://localhost:8096/health
 ### Automated Monitoring
 
 Jellyfin is monitored by `/opt/homeserver/scripts/operations/monitoring/check-container-health.sh`:
-- Runs every 5 minutes via cron
-- Sends email alert if unhealthy
+- Runs every 15 minutes via `/etc/cron.d/homeserver-cron`
+- Reads container list from `configs/monitoring/critical-containers.conf`
+- Sends consolidated email alert if unhealthy or missing
 - Reference: docs/02-infrastructure-layer.md for monitoring details

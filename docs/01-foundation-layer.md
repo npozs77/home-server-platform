@@ -588,35 +588,35 @@ sudo systemctl status unattended-upgrades
 
 **Cron job**: Monitors Docker container health every 5 minutes
 
-**Configuration**:
+**Configuration** (via `/etc/cron.d/homeserver-cron`):
 ```bash
-crontab -l
+cat /etc/cron.d/homeserver-cron
 # Should show:
-*/5 * * * * /opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+*/15 * * * * root /opt/homeserver/scripts/operations/monitoring/check-container-health.sh >> /var/log/homeserver/health-check.log 2>&1
 ```
 
-**Add cron job** (if not present):
+**Install cron** (if not present):
 ```bash
-crontab -e
-# Add line:
-*/5 * * * * /opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+sudo cp /opt/homeserver/configs/cron/homeserver-cron /etc/cron.d/homeserver-cron
+sudo chmod 644 /etc/cron.d/homeserver-cron
 ```
 
 **What it monitors**:
-- Pi-hole container health
-- Caddy container health
-- Jellyfin container health
+- Critical containers listed in `configs/monitoring/critical-containers.conf`
+- Default: caddy, pihole, immich-server, immich-postgres, jellyfin
 
 **Alert behavior**:
-- Sends email to ADMIN_EMAIL if any container unhealthy
-- Uses msmtp for email delivery
-- No output if all containers healthy
+- Sends single consolidated email to ADMIN_EMAIL if any container unhealthy or missing
+- Uses msmtp for email delivery (graceful fallback if unavailable)
+- No email if all containers healthy
+- Logs structured output to `/var/log/homeserver/health-check.log`
 
 **Manual test**:
 ```bash
-/opt/homeserver/scripts/operations/monitoring/check-container-health.sh
-# No output = all healthy
-# Email sent = container unhealthy
+sudo /opt/homeserver/scripts/operations/monitoring/check-container-health.sh --dry-run
+# Shows container statuses without sending email
+sudo /opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+# Sends email if any unhealthy
 ```
 
 **Verify cron is running**:

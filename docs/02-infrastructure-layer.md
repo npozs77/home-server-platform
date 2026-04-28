@@ -519,29 +519,36 @@ docker inspect <container> --format='{{.State.Health.Status}}'
 **Monitoring script**: `/opt/homeserver/scripts/operations/monitoring/check-container-health.sh`
 
 **What it does**:
-- Checks health status of Pi-hole, Caddy, Jellyfin
-- Sends email alert if any container unhealthy
-- Runs every 5 minutes via cron
+- Reads critical container list from `configs/monitoring/critical-containers.conf`
+- Checks health status of each container via `docker inspect`
+- Sends single consolidated email alert if any container unhealthy or missing
+- No email if all healthy (no noise on success)
+- Supports `--dry-run` mode
+- Logs to `/var/log/homeserver/health-check.log` using structured format
 
-**Cron configuration**:
+**Monitored containers** (default):
+- caddy, pihole, immich-server, immich-postgres, jellyfin
+- Edit `configs/monitoring/critical-containers.conf` to add/remove
+
+**Cron configuration** (via `/etc/cron.d/homeserver-cron`):
 ```bash
-crontab -l
-# Should show:
-*/5 * * * * /opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+# Runs every 15 minutes as root
+*/15 * * * * root /opt/homeserver/scripts/operations/monitoring/check-container-health.sh >> /var/log/homeserver/health-check.log 2>&1
 ```
 
 **Manual test**:
 ```bash
-/opt/homeserver/scripts/operations/monitoring/check-container-health.sh
-# No output if all healthy
-# Sends email if any unhealthy
+sudo /opt/homeserver/scripts/operations/monitoring/check-container-health.sh --dry-run
+# Shows container statuses, reports what alerts would be sent
+sudo /opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+# Sends email if any unhealthy, logs structured output
 ```
 
 **Email alerts**:
 - Recipient: ADMIN_EMAIL from foundation.env
-- Subject: [ALERT] Container <name> unhealthy
-- Body: Container status and timestamp
-- Delivery: via msmtp (configured in Phase 2)
+- Subject: `[HOMESERVER] Container Alert - YYYY-MM-DD HH:MM`
+- Body: hostname, timestamp, unhealthy/missing containers, healthy containers
+- Delivery: via msmtp (graceful fallback if unavailable)
 
 ### Troubleshooting Unhealthy Containers
 
