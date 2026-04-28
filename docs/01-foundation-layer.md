@@ -165,28 +165,60 @@ sudo fail2ban-client status sshd
 
 ### Disk Encryption (LUKS)
 
-**Encrypted Partition**:
-- **Device**: [DATA_DISK from config, e.g., /dev/sdb]
+**Data Partition**:
+- **Device**: /dev/nvme0n1p3
+- **LUKS mapper**: `data_crypt`
 - **Type**: LUKS (Linux Unified Key Setup)
 - **Filesystem**: ext4
 - **Mount Point**: /mnt/data
+- **Key slots**: Slot 0 = passphrase, Slot 1 = `/root/.luks-key`
 
-**Auto-Unlock Configuration**:
+**Backup Partition (DAS)**:
+- **Device**: /dev/sdb2 (~900GB)
+- **LUKS mapper**: `backup_crypt`
+- **Type**: LUKS
+- **Filesystem**: ext4
+- **Mount Point**: /mnt/backup
+- **Key slots**: Slot 0 = passphrase (same as data partition), Slot 1 = `/root/.luks-key`
+- **crypttab**: `backup_crypt UUID=<uuid> /root/.luks-key luks,nofail,noauto`
+- **fstab**: `/dev/mapper/backup_crypt /mnt/backup ext4 defaults,nofail 0 2`
+- **Boot behavior**: Not auto-opened (`noauto`). Server boots cleanly without DAS.
+
+**Key Slot Inventory**:
+
+| Partition | Device | Mapper | Slot 0 | Slot 1 |
+|-----------|--------|--------|--------|--------|
+| Data | /dev/nvme0n1p3 | data_crypt | Passphrase | /root/.luks-key |
+| Backup | /dev/sdb2 | backup_crypt | Passphrase | /root/.luks-key |
+
+**Auto-Unlock Configuration** (data partition only):
 - **Key File**: /root/.luks-key
 - **Permissions**: 600 (root-only)
 - **Crypttab**: `/etc/crypttab` (auto-unlock on boot)
 - **Fstab**: `/etc/fstab` (auto-mount after unlock)
 
-**Manual Unlock** (emergency):
+**LUKS Header Backups**:
+- `/root/luks-header-backup-nvme0n1p3.img` (data partition, 600 permissions)
+- `/root/luks-header-backup-sdb2.img` (backup partition, 600 permissions)
+- Also copied to `/mnt/backup/configs/system/` by `backup-configs.sh`
+
+**Manual Unlock** (data partition — emergency):
 ```bash
-sudo cryptsetup luksOpen /dev/sdb data_crypt
-# Enter passphrase when prompted
+sudo cryptsetup luksOpen /dev/nvme0n1p3 data_crypt
 sudo mount /dev/mapper/data_crypt /mnt/data
+```
+
+**Manual Unlock** (backup partition):
+```bash
+sudo cryptsetup luksOpen /dev/sdb2 backup_crypt
+sudo mount /dev/mapper/backup_crypt /mnt/backup
 ```
 
 **Passphrase Storage**:
 - Password manager (primary)
 - Printed copy (secure location, backup)
+
+**Recovery**: See `docs/12-runbooks.md` → LUKS Disk Encryption Recovery for full recovery procedures (key file lost, passphrase forgotten, header corrupted, both keys lost).
 
 ## Docker Configuration
 
@@ -541,14 +573,22 @@ sudo systemctl status unattended-upgrades
 
 ### LUKS Partition Not Mounting
 
-**Symptoms**: /mnt/data not mounted after reboot
+**Symptoms**: /mnt/data or /mnt/backup not mounted after reboot
 
-**Solutions**:
+**Solutions (data partition)**:
 1. Check crypttab: `cat /etc/crypttab`
 2. Check fstab: `cat /etc/fstab`
 3. Verify key file: `ls -l /root/.luks-key` (should be 600)
-4. Manual unlock: `sudo cryptsetup luksOpen /dev/sdb data_crypt`
+4. Manual unlock: `sudo cryptsetup luksOpen /dev/nvme0n1p3 data_crypt`
 5. Manual mount: `sudo mount /dev/mapper/data_crypt /mnt/data`
+
+**Solutions (backup partition / DAS)**:
+1. Check DAS is connected: `lsblk | grep sdb`
+2. Manual unlock: `sudo cryptsetup luksOpen /dev/sdb2 backup_crypt`
+3. Manual mount: `sudo mount /dev/mapper/backup_crypt /mnt/backup`
+4. Note: DAS uses `nofail,noauto` — it is NOT auto-opened at boot by design
+
+**Full recovery procedures**: See `docs/12-runbooks.md` → LUKS Disk Encryption Recovery
 
 ### Firewall Blocking Services
 

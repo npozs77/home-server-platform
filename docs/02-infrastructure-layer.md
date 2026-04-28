@@ -410,6 +410,116 @@ curl -k https://service.home.mydomain.com
 docker logs caddy | grep error
 ```
 
+## Backup System
+
+### DAS LUKS Backup Target
+
+- **Device**: `/dev/sdb2` (~900GB DAS partition)
+- **LUKS mapper**: `backup_crypt`
+- **Mount point**: `/mnt/backup/`
+- **Filesystem**: ext4
+- **crypttab entry**: `backup_crypt UUID=<uuid> /root/.luks-key luks,nofail,noauto`
+- **fstab entry**: `/dev/mapper/backup_crypt /mnt/backup ext4 defaults,nofail 0 2`
+- **Boot behavior**: Not auto-opened (`noauto` in crypttab). Server boots cleanly without DAS connected.
+
+**Setup script**: `scripts/backup/setup-das-luks.sh` (one-time admin operation)
+
+**Manual open/mount**:
+```bash
+sudo cryptsetup luksOpen /dev/sdb2 backup_crypt
+sudo mount /dev/mapper/backup_crypt /mnt/backup
+```
+
+### Backup Orchestrator
+
+**Script**: `/opt/homeserver/scripts/backup/backup-all.sh`
+
+**What it does**:
+1. Verifies `/mnt/backup/` is mounted and writable (mount guard)
+2. Creates missing backup subdirectories (`configs/`, `immich/`, `wiki/`)
+3. Runs backup jobs in order:
+   - `backup-configs.sh` — server configs and system files
+   - `backup-immich.sh` — Immich database dump + photo rsync
+   - `backup-wiki.sh` — Wiki.js data (stub until deployed)
+4. Cleans up database dumps older than 30 days
+5. Checks disk usage (warn >90%, critical >95%)
+6. Sends single summary email if any failures (no email on success)
+
+**Cron schedule** (via `/etc/cron.d/homeserver-cron`):
+```
+0 2 * * * root /opt/homeserver/scripts/backup/backup-all.sh >> /var/log/homeserver/backup-$(date +\%Y\%m\%d).log 2>&1
+```
+
+**Log location**: `/var/log/homeserver/backup-YYYYMMDD.log`
+
+**Exit codes**: 0 = all jobs succeeded, 1 = any job failed, 2 = mount unavailable
+
+### Individual Backup Scripts
+
+| Script | Path | Purpose |
+|--------|------|---------|
+| `backup-configs.sh` | `scripts/backup/backup-configs.sh` | rsync server configs + system files to `/mnt/backup/configs/` |
+| `backup-immich.sh` | `scripts/backup/backup-immich.sh` | pg_dump + rsync Immich data to `/mnt/backup/immich/` |
+| `backup-wiki.sh` | `scripts/backup/backup-wiki.sh` | Wiki.js backup (stub — skips gracefully until Wiki.js deployed) |
+
+All scripts support `--dry-run`, use structured logging, and source `log-utils.sh`.
+
+### Structured Logging
+
+All backup and monitoring scripts use a consistent log format:
+```
+YYYY-MM-DD HH:MM:SS - [LEVEL] - [script-name] - message
+```
+
+Provided by `scripts/operations/utils/log-utils.sh` (`log_msg()` function).
+
+### Logrotate
+
+**Config**: `/etc/logrotate.d/homeserver-backups`
+
+| Log Pattern | Rotation | Retention | Options |
+|-------------|----------|-----------|---------|
+| `/var/log/homeserver/backup-*.log` | daily | 30 days | compress, delaycompress, missingok, notifempty |
+| `/var/log/homeserver/health-check.log` | weekly | 4 weeks | compress, delaycompress, missingok, notifempty, copytruncate |
+
+### Email Alerts
+
+All alerts sent via msmtp to `ADMIN_EMAIL` (from `foundation.env`). Graceful fallback if msmtp unavailable.
+
+| Alert Type | Subject Format | Trigger |
+|------------|---------------|---------|
+| Backup failure | `[HOMESERVER] Backup FAILED - YYYY-MM-DD` | Any backup job fails |
+| Mount unavailable | `[HOMESERVER] Backup FAILED - Mount unavailable - YYYY-MM-DD` | `/mnt/backup/` not mounted |
+| Disk warning | `[HOMESERVER] Backup Disk Warning - YYYY-MM-DD` | Usage >90% |
+| Disk critical | `[HOMESERVER] Backup Disk CRITICAL - YYYY-MM-DD` | Usage >95% |
+| Container alert | `[HOMESERVER] Container Alert - YYYY-MM-DD HH:MM` | Any critical container unhealthy |
+
+### Manual Operations
+
+**Run full backup manually**:
+```bash
+sudo /opt/homeserver/scripts/backup/backup-all.sh
+# Or dry-run first:
+sudo /opt/homeserver/scripts/backup/backup-all.sh --dry-run
+```
+
+**Run individual backup**:
+```bash
+sudo /opt/homeserver/scripts/backup/backup-configs.sh
+sudo /opt/homeserver/scripts/backup/backup-immich.sh /mnt/backup/immich
+sudo /opt/homeserver/scripts/backup/backup-wiki.sh
+```
+
+**Check backup logs**:
+```bash
+cat /var/log/homeserver/backup-$(date +%Y%m%d).log
+```
+
+**Check disk usage**:
+```bash
+df -h /mnt/backup/
+```
+
 ## File Locations
 
 - **Caddy config**: /opt/homeserver/configs/caddy/Caddyfile
@@ -420,13 +530,25 @@ docker logs caddy | grep error
 - **Netdata config**: /opt/homeserver/configs/netdata/
 - **Root CA certificate**: /opt/homeserver/configs/caddy/root-ca.crt
 - **Services config**: /opt/homeserver/configs/services.env
+- **Backup scripts**: /opt/homeserver/scripts/backup/
+- **Health check script**: /opt/homeserver/scripts/operations/monitoring/check-container-health.sh
+- **Log utilities**: /opt/homeserver/scripts/operations/utils/log-utils.sh
+- **Cron config**: /etc/cron.d/homeserver-cron
+- **Logrotate config**: /etc/logrotate.d/homeserver-backups
+- **Critical containers config**: /opt/homeserver/configs/monitoring/critical-containers.conf
+- **Backup logs**: /var/log/homeserver/backup-YYYYMMDD.log
+- **Health check logs**: /var/log/homeserver/health-check.log
+- **LUKS header backups**: /root/luks-header-backup-sdb2.img, /root/luks-header-backup-nvme0n1p3.img
 
 ## Related Documentation
 
 - Architecture Overview: docs/00-architecture-overview.md
 - Foundation Layer: docs/01-foundation-layer.md
 - Services Layer: docs/03-services-layer.md
+- Storage: docs/05-storage.md
+- Runbooks (LUKS Recovery): docs/12-runbooks.md
 - Deployment Manual: docs/deployment_manuals/phase2-infrastructure.md
+- Backup Deployment Manual: docs/deployment_manuals/backup-alerting.md
 
 
 ### Pi-hole Management

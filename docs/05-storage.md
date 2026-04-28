@@ -2,7 +2,9 @@
 
 ## Overview
 
-Data storage organization on `/mnt/data/` (LUKS encrypted partition). All user data, media, service data, and backups are stored here with clear separation and proper permissions.
+Data storage organization across two LUKS-encrypted partitions:
+- `/mnt/data/` — Primary data partition (NVMe, `/dev/nvme0n1p3`). User data, media, service data.
+- `/mnt/backup/` — DAS backup partition (`/dev/sdb2`, ~900GB). Backup destination for configs, Immich, and Wiki.js data.
 
 ## Directory Structure
 
@@ -311,11 +313,88 @@ Data storage organization on `/mnt/data/` (LUKS encrypted partition). All user d
 - **Incremental**: Daily at 2 AM (last 30 days)
 - **Off-site**: Weekly on Sunday at 3 AM (last 12 weeks)
 
+## DAS Backup Partition (/mnt/backup/)
+
+### Overview
+
+External DAS (Direct Attached Storage) with ~900GB LUKS-encrypted partition used as the primary backup destination. Mounted manually or via cron (not auto-mounted at boot — `nofail,noauto` in crypttab).
+
+### Encryption
+
+- **Device**: `/dev/sdb2`
+- **LUKS mapper**: `backup_crypt` → `/dev/mapper/backup_crypt`
+- **Filesystem**: ext4
+- **Mount point**: `/mnt/backup/`
+- **Key slots**: Slot 0 = passphrase, Slot 1 = `/root/.luks-key` (same key file as data partition)
+- **crypttab**: `backup_crypt UUID=<uuid> /root/.luks-key luks,nofail,noauto`
+- **fstab**: `/dev/mapper/backup_crypt /mnt/backup ext4 defaults,nofail 0 2`
+
+### Directory Structure
+
+```
+/mnt/backup/                          # LUKS-encrypted DAS partition (root:root, 755)
+├── configs/                          # Server configuration backup (root:root, 755)
+│   ├── homeserver/                   # Mirror of /opt/homeserver/
+│   │   ├── configs/                  # foundation.env, services.env, secrets.env, etc.
+│   │   └── scripts/                  # All deployment and operational scripts
+│   └── system/                       # Individual system config files
+│       ├── fstab
+│       ├── crypttab
+│       ├── sshd_config
+│       ├── msmtp*                    # msmtp config files
+│       ├── homeserver-*              # logrotate configs
+│       └── luks-header-backup-*.img  # LUKS header backups (both partitions)
+├── immich/                           # Immich backup (root:root, 755)
+│   ├── immich-db-YYYYMMDD_HHMMSS.sql # Timestamped DB dumps (30-day retention)
+│   ├── upload/                       # rsync mirror of Immich uploads
+│   ├── media-photos/                 # rsync mirror of media photos
+│   └── family-photos/               # rsync mirror of family photos
+└── wiki/                             # Wiki.js backup (root:root, 755)
+    ├── wiki-db-YYYYMMDD_HHMMSS.sql   # Timestamped DB dumps (30-day retention)
+    └── data/                         # rsync mirror of wiki data directory
+```
+
+### Ownership and Permissions
+
+- All directories: `root:root`, `755`
+- All backup operations run as root (via cron or sudo)
+- LUKS header backup files: `root:root`, `600`
+
+### Subdirectory Details
+
+| Directory | Purpose | Backup Script | Sync Method |
+|-----------|---------|---------------|-------------|
+| `configs/homeserver/` | Mirror of `/opt/homeserver/configs/` and `scripts/` | `backup-configs.sh` | `rsync -a --delete` |
+| `configs/system/` | System config files (fstab, crypttab, sshd, msmtp, logrotate, LUKS headers) | `backup-configs.sh` | File copy |
+| `immich/` | Immich database dumps + photo/upload mirrors | `backup-immich.sh` | `pg_dump` + `rsync -a --delete` |
+| `wiki/` | Wiki.js database dumps + data mirror | `backup-wiki.sh` | `pg_dump` + `rsync -a --delete` (stub until Wiki.js deployed) |
+
+### Manual Mount/Unmount
+
+```bash
+# Open and mount
+sudo cryptsetup luksOpen /dev/sdb2 backup_crypt
+sudo mount /dev/mapper/backup_crypt /mnt/backup
+
+# Unmount and close
+sudo umount /mnt/backup
+sudo cryptsetup luksClose backup_crypt
+```
+
+### LUKS Header Backups
+
+Stored at `/root/` with 600 permissions and also copied to `/mnt/backup/configs/system/`:
+- `/root/luks-header-backup-sdb2.img` — Backup partition header
+- `/root/luks-header-backup-nvme0n1p3.img` — Data partition header
+
+See `docs/12-runbooks.md` → LUKS Disk Encryption Recovery for recovery procedures.
+
 ## Related Documentation
 
 - Architecture Overview: docs/00-architecture-overview.md
 - Foundation Layer: docs/01-foundation-layer.md
 - Infrastructure Layer: docs/02-infrastructure-layer.md
 - Immich Setup: docs/09-immich-setup.md
+- Runbooks (LUKS Recovery): docs/12-runbooks.md
 - Phase 2 Spec: .kiro/specs/02-infrastructure/
 - Phase 4 Spec: .kiro/specs/04-photo-management/
