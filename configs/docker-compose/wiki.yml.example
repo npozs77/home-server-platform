@@ -1,0 +1,81 @@
+# Wiki.js Family Wiki Docker Compose (Phase 5 — Sub-phase A)
+# Copy to wiki.yml and deploy:
+#   docker compose --env-file foundation.env --env-file services.env --env-file secrets.env -f wiki.yml up -d
+# Requires: foundation.env (TIMEZONE)
+# Requires: services.env (WIKI_DB_USER, WIKI_DB_NAME, WIKI_PORT, WIKI_MEM_LIMIT, WIKI_CPU_LIMIT, WIKI_DB_MEM_LIMIT, WIKI_DB_CPU_LIMIT)
+# Requires: secrets.env (WIKI_DB_PASSWORD)
+# Reference: .kiro/specs/05-wiki-llm-platform/design.md
+
+services:
+  wiki-db:
+    image: postgres:15-alpine
+    container_name: wiki-db
+    restart: unless-stopped
+    volumes:
+      - /mnt/data/services/wiki/postgres:/var/lib/postgresql/data:rw
+    environment:
+      POSTGRES_USER: ${WIKI_DB_USER}
+      POSTGRES_PASSWORD: ${WIKI_DB_PASSWORD}
+      POSTGRES_DB: ${WIKI_DB_NAME}
+      TZ: ${TIMEZONE}
+    shm_size: 64mb
+    networks:
+      - homeserver
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WIKI_DB_USER} -d ${WIKI_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "${WIKI_DB_CPU_LIMIT:-1.0}"
+          memory: ${WIKI_DB_MEM_LIMIT:-512M}
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  wiki-server:
+    image: ghcr.io/requarks/wiki:2
+    container_name: wiki-server
+    restart: unless-stopped
+    ports:
+      - "${WIKI_PORT:-3000}:3000"
+    volumes:
+      - /mnt/data/services/wiki/content:/wiki/data/content:rw
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: wiki-db
+      DB_PORT: 5432
+      DB_USER: ${WIKI_DB_USER}
+      DB_PASS: ${WIKI_DB_PASSWORD}
+      DB_NAME: ${WIKI_DB_NAME}
+      TZ: ${TIMEZONE}
+    depends_on:
+      wiki-db:
+        condition: service_healthy
+    networks:
+      - homeserver
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "${WIKI_CPU_LIMIT:-1.0}"
+          memory: ${WIKI_MEM_LIMIT:-512M}
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+networks:
+  homeserver:
+    external: true

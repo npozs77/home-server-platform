@@ -1,0 +1,74 @@
+# Ollama + Open WebUI Docker Compose (Phase 5 — Sub-phase B)
+# Copy to ollama.yml and deploy:
+#   docker compose --env-file foundation.env --env-file services.env -f ollama.yml up -d
+# Requires: foundation.env (TIMEZONE)
+# Requires: services.env (OLLAMA_VERSION, OLLAMA_MEM_LIMIT, OLLAMA_CPU_LIMIT, OPENWEBUI_VERSION, OPENWEBUI_PORT, OPENWEBUI_MEM_LIMIT, OPENWEBUI_CPU_LIMIT, ENABLE_WEB_SEARCH, WEB_SEARCH_ENGINE)
+# Reference: .kiro/specs/05-wiki-llm-platform/design.md
+
+services:
+  ollama:
+    image: ollama/ollama:${OLLAMA_VERSION:-latest}
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - /mnt/data/services/ollama/models:/root/.ollama:rw
+    environment:
+      TZ: ${TIMEZONE}
+    networks:
+      - homeserver
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "${OLLAMA_CPU_LIMIT:-4.0}"
+          memory: ${OLLAMA_MEM_LIMIT:-6G}
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:${OPENWEBUI_VERSION:-latest}
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "${OPENWEBUI_PORT:-8080}:8080"
+    volumes:
+      - /mnt/data/services/openwebui/data:/app/backend/data:rw
+    environment:
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      ENABLE_SIGNUP: "false"
+      ENABLE_WEB_SEARCH: "${ENABLE_WEB_SEARCH:-true}"
+      WEB_SEARCH_ENGINE: "${WEB_SEARCH_ENGINE:-duckduckgo}"
+      TZ: ${TIMEZONE}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - homeserver
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "${OPENWEBUI_CPU_LIMIT:-2.0}"
+          memory: ${OPENWEBUI_MEM_LIMIT:-1G}
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+networks:
+  homeserver:
+    external: true
