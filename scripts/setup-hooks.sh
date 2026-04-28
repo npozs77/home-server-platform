@@ -86,6 +86,7 @@ paths = [
     '''\.env\..*$''',
     '''OLD/''',
     '''\.git/''',
+    '''\.kiro/''',
 ]
 TOML
     echo "✓ .gitleaks.toml generated (gitignored — local only)"
