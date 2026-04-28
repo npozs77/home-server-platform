@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # Validation Utilities: Core Services Layer
 # Purpose: Validation functions for Samba, Jellyfin, and user provisioning
 # Usage: Source this file in deployment scripts

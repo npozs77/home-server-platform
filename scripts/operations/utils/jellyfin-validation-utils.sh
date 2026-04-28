@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # Jellyfin Validation Utilities
 # Provides functions to validate Jellyfin library configuration
 # Usage: source /opt/homeserver/scripts/operations/utils/jellyfin-validation-utils.sh

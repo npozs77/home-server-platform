@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # Validation Utilities: Photo Management Layer
 # Purpose: Validation functions for Immich photo management deployment
 # Usage: Source this file in deployment scripts

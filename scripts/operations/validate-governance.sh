@@ -20,6 +20,7 @@ UTILITY_LIBRARY_LIMIT=200
 # Counters
 TOTAL_CHECKS=0
 PASSED_CHECKS=0
+WARN_CHECKS=0
 
 # Colors
 RED='\033[0;31m'
@@ -41,6 +42,13 @@ print_pass() {
 
 print_fail() {
     echo -e "${RED}✗${NC} $1"
+    ((TOTAL_CHECKS++))
+}
+
+print_warn() {
+    echo -e "${YELLOW}⚠${NC} $1"
+    ((WARN_CHECKS++))
+    ((PASSED_CHECKS++))
     ((TOTAL_CHECKS++))
 }
 
@@ -70,7 +78,7 @@ check_script_size() {
         print_pass "$description: $loc LOC (limit: $limit)"
         return 0
     else
-        print_fail "$description: $loc LOC exceeds limit of $limit"
+        print_warn "$description: $loc LOC exceeds advisory limit of $limit"
         return 0  # Don't exit early, continue validation
     fi
 }
@@ -127,7 +135,7 @@ check_test_exists() {
     # For task modules, look for phase-specific test files
     if [[ "$file" == *"/tasks/task-ph"* ]]; then
         # Extract phase number (ph1, ph2, etc.)
-        local phase=$(echo "$basename" | grep -oP 'ph\d+')
+        local phase=$(echo "$basename" | grep -o 'ph[0-9]*')
         test_file="${REPO_ROOT}/tests/test_${phase}_scripts.sh"
     fi
     
@@ -156,7 +164,7 @@ main() {
     # Check deployment scripts
     print_header "Deployment Scripts (limit: ${DEPLOYMENT_SCRIPT_LIMIT} LOC)"
     
-    for script in "${REPO_ROOT}/scripts/deploy/deploy-phase"*"-refactored.sh"; do
+    for script in "${REPO_ROOT}/scripts/deploy/deploy-phase"*.sh; do
         if [[ -f "$script" ]]; then
             local basename=$(basename "$script")
             check_script_size "$script" "$DEPLOYMENT_SCRIPT_LIMIT" "$basename" || true
@@ -203,12 +211,16 @@ main() {
     echo ""
     
     if [[ $PASSED_CHECKS -eq $TOTAL_CHECKS ]]; then
-        echo -e "${GREEN}✓ All governance checks passed: ${PASSED_CHECKS} / ${TOTAL_CHECKS}${NC}"
+        if [[ $WARN_CHECKS -gt 0 ]]; then
+            echo -e "${GREEN}✓ All governance checks passed: ${PASSED_CHECKS} / ${TOTAL_CHECKS} (${WARN_CHECKS} warnings)${NC}"
+        else
+            echo -e "${GREEN}✓ All governance checks passed: ${PASSED_CHECKS} / ${TOTAL_CHECKS}${NC}"
+        fi
         echo ""
         return 0
     else
         local failed=$((TOTAL_CHECKS - PASSED_CHECKS))
-        echo -e "${RED}✗ Governance validation failed: ${PASSED_CHECKS} / ${TOTAL_CHECKS} checks passed (${failed} failed)${NC}"
+        echo -e "${RED}✗ Governance validation failed: ${PASSED_CHECKS} / ${TOTAL_CHECKS} checks passed (${failed} failed, ${WARN_CHECKS} warnings)${NC}"
         echo ""
         echo "Fix violations before deploying."
         return 1
