@@ -40,7 +40,7 @@ send_alert_email() {
         log_msg "WARN" "${SCRIPT_NAME:-unknown}" "msmtp not available — alert logged locally only: ${subject}"
         return 0
     fi
-    printf "Subject: %s\n\n%s" "$subject" "$body" | msmtp "${ADMIN_EMAIL}" 2>/dev/null || {
+    printf "Subject: %s\n\n%b" "$subject" "$body" | msmtp "${ADMIN_EMAIL}" 2>/dev/null || {
         log_msg "WARN" "${SCRIPT_NAME:-unknown}" "msmtp send failed — alert logged locally only: ${subject}"
     }
     return 0
