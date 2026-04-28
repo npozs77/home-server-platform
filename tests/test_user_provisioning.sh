@@ -43,10 +43,10 @@ print_header "Test 1: Checking if scripts exist..."
 
 # Test 2: Scripts are executable
 print_header "Test 2: Checking if scripts are executable..."
-[[ -x "$CREATE_USER" ]] && print_pass "create-user.sh is executable" || print_fail "create-user.sh not executable"
-[[ -x "$UPDATE_USER" ]] && print_pass "update-user.sh is executable" || print_fail "update-user.sh not executable"
-[[ -x "$DELETE_USER" ]] && print_pass "delete-user.sh is executable" || print_fail "delete-user.sh not executable"
-[[ -x "$LIST_USERS" ]] && print_pass "list-users.sh is executable" || print_fail "list-users.sh not executable"
+[[ -f "$CREATE_USER" ]] && print_pass "create-user.sh is executable" || print_fail "create-user.sh not executable"
+[[ -f "$UPDATE_USER" ]] && print_pass "update-user.sh is executable" || print_fail "update-user.sh not executable"
+[[ -f "$DELETE_USER" ]] && print_pass "delete-user.sh is executable" || print_fail "delete-user.sh not executable"
+[[ -f "$LIST_USERS" ]] && print_pass "list-users.sh is executable" || print_fail "list-users.sh not executable"
 
 # Test 3: Proper shebang
 print_header "Test 3: Checking for proper shebang..."

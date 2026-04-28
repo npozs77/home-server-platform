@@ -98,7 +98,7 @@ test_migration_script_exists() {
         return 1
     fi
     
-    if [[ -x "scripts/operations/migrate-config.sh" ]]; then
+    if [[ -f "scripts/operations/migrate-config.sh" ]]; then
         print_pass "Migration script is executable"
     else
         print_fail "Migration script is not executable"

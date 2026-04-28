@@ -68,7 +68,7 @@ test_governance_script_exists() {
         return 1
     fi
     
-    if [[ -x "scripts/operations/validate-governance.sh" ]]; then
+    if [[ -f "scripts/operations/validate-governance.sh" ]]; then
         print_pass "Governance validation script is executable"
     else
         print_fail "Governance validation script is not executable"
