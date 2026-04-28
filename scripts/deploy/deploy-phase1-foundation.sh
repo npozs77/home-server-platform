@@ -55,6 +55,11 @@ ADMIN_EMAIL="$ADMIN_EMAIL"
 DATA_DISK="$DATA_DISK"
 DATA_MOUNT="$DATA_MOUNT"
 
+# Backup DAS Configuration
+BACKUP_DISK="$BACKUP_DISK"
+BACKUP_MOUNT="$BACKUP_MOUNT"
+BACKUP_MAPPER="$BACKUP_MAPPER"
+
 # Git Configuration
 GIT_USER_NAME="$GIT_USER_NAME"
 GIT_USER_EMAIL="$GIT_USER_EMAIL"
@@ -104,6 +109,17 @@ init_config() {
     DATA_DISK="${input:-${DATA_DISK:-/dev/sdb}}"
     
     DATA_MOUNT="${DATA_MOUNT:-/mnt/data}"
+    
+    echo ""
+    print_info "Backup DAS configuration:"
+    read -p "Backup disk partition [${BACKUP_DISK:-/dev/sdb2}]: " input
+    BACKUP_DISK="${input:-${BACKUP_DISK:-/dev/sdb2}}"
+    
+    read -p "Backup mount point [${BACKUP_MOUNT:-/mnt/backup}]: " input
+    BACKUP_MOUNT="${input:-${BACKUP_MOUNT:-/mnt/backup}}"
+    
+    read -p "Backup LUKS mapper name [${BACKUP_MAPPER:-backup_crypt}]: " input
+    BACKUP_MAPPER="${input:-${BACKUP_MAPPER:-backup_crypt}}"
     
     read -sp "LUKS passphrase (20+ characters): " input
     echo ""
@@ -202,18 +218,8 @@ validate_all() {
     export DATA_DISK ADMIN_USER
     
     local total=0 passed=0
-    checks=(
-        "SSH Hardening:validate_ssh_hardening"
-        "UFW Firewall:validate_ufw_firewall"
-        "fail2ban:validate_fail2ban"
-        "Docker:validate_docker"
-        "Git Repository:validate_git_repository"
-        "Unattended-upgrades:validate_unattended_upgrades"
-        "LUKS Encryption:validate_luks_encryption"
-        "Docker Group:validate_docker_group"
-        "Essential Tools:validate_essential_tools"
-        "Shell Environment:validate_shell_environment"
-    )
+    # PHASE1_CHECKS defined in validation-foundation-utils.sh (single source of truth)
+    checks=("${PHASE1_CHECKS[@]}")
     
     for check in "${checks[@]}"; do
         name="${check%%:*}"
