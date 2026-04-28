@@ -13,6 +13,13 @@ Private infrastructure-as-code repository for a family home server. Manages the 
 | Samba | File sharing (SMB) | LAN shares |
 | Immich | Photo management | `photos.home.mydomain.com` |
 
+## External Services (Free Tier)
+
+| Service | Purpose |
+|---------|---------|
+| Cloudflare | Domain registration + DNS management |
+| SMTP2Go | Outbound email alerts (msmtp relay) |
+
 ## Stack
 
 - **OS**: Ubuntu Server LTS 24.04
