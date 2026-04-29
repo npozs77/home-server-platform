@@ -672,7 +672,7 @@ test_health_check_reads_config() {
         return
     fi
 
-    local expected=("caddy" "pihole" "immich-server" "immich-postgres" "jellyfin")
+    local expected=("caddy" "pihole" "immich-server" "immich-postgres" "jellyfin" "wiki-server" "wiki-db" "ollama" "open-webui")
     for name in "${expected[@]}"; do
         if grep -q "^${name}$" "$HEALTH_CONFIG"; then
             print_pass "Config contains ${name}"
@@ -1222,7 +1222,7 @@ test_containers_conf_defaults() {
         print_fail "critical-containers.conf not found"
         return
     fi
-    local expected=("caddy" "pihole" "immich-server" "immich-postgres" "jellyfin")
+    local expected=("caddy" "pihole" "immich-server" "immich-postgres" "jellyfin" "wiki-server" "wiki-db" "ollama" "open-webui")
     for name in "${expected[@]}"; do
         if grep -q "^${name}$" "$HEALTH_CONFIG"; then
             print_pass "Config contains $name"
