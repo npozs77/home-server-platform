@@ -113,7 +113,12 @@ validate_wiki_rag_sync_script() {
 
 # Validate Netdata discovers Phase 5 containers
 validate_netdata_phase5() {
-    curl -s http://localhost:19999/api/v1/charts 2>/dev/null | grep -qE "wiki|ollama|open.webui"
+    local tmpfile="/tmp/netdata_charts_check.json"
+    curl -s --max-time 15 http://localhost:19999/api/v1/charts > "$tmpfile" 2>/dev/null || true
+    local result=1
+    grep -qE "wiki|ollama|open.webui" "$tmpfile" 2>/dev/null && result=0
+    rm -f "$tmpfile"
+    return $result
 }
 
 # Validate secrets.env not tracked in Git
