@@ -6,7 +6,7 @@ set -euo pipefail
 
 # Validate Wiki.js directories exist
 validate_wiki_directories() {
-    [[ -d "${DATA_MOUNT}/services/wiki/postgres" ]] && [[ -d "${DATA_MOUNT}/services/wiki/git" ]]
+    [[ -d "${DATA_MOUNT}/services/wiki/postgres" ]] && [[ -d "${DATA_MOUNT}/services/wiki/content" ]]
 }
 
 # Validate LLM directories exist
@@ -126,6 +126,56 @@ validate_git_commit() {
     git -C /opt/homeserver status | grep -q "nothing to commit, working tree clean"
 }
 
+# Validate LOC governance for Phase 5 scripts (Warning not failure on exceed)
+# Returns 0 always — prints warnings for scripts exceeding advisory limits
+validate_loc_governance() {
+    local DEPLOY_LIMIT=300
+    local TASK_LIMIT=152
+    local UTIL_LIMIT=200
+    local warnings=0
+
+    # Helper: count non-empty, non-comment lines
+    _count_loc() {
+        grep -v '^\s*#' "$1" | grep -v '^\s*$' | wc -l
+    }
+
+    # Check orchestration script
+    local orch="/opt/homeserver/scripts/deploy/deploy-phase5-wiki-llm.sh"
+    if [[ -f "$orch" ]]; then
+        local loc; loc=$(_count_loc "$orch")
+        if [[ $loc -gt $DEPLOY_LIMIT ]]; then
+            echo "WARNING: deploy-phase5-wiki-llm.sh: $loc LOC exceeds advisory limit of $DEPLOY_LIMIT"
+            warnings=$((warnings + 1))
+        fi
+    fi
+
+    # Check Phase 5 task modules
+    for task in /opt/homeserver/scripts/deploy/tasks/task-ph5-*.sh; do
+        [[ -f "$task" ]] || continue
+        local loc; loc=$(_count_loc "$task")
+        if [[ $loc -gt $TASK_LIMIT ]]; then
+            echo "WARNING: $(basename "$task"): $loc LOC exceeds advisory limit of $TASK_LIMIT"
+            warnings=$((warnings + 1))
+        fi
+    done
+
+    # Check Phase 5 validation utility
+    local vutil="/opt/homeserver/scripts/operations/utils/validation-wiki-llm-utils.sh"
+    if [[ -f "$vutil" ]]; then
+        local loc; loc=$(_count_loc "$vutil")
+        if [[ $loc -gt $UTIL_LIMIT ]]; then
+            echo "WARNING: validation-wiki-llm-utils.sh: $loc LOC exceeds advisory limit of $UTIL_LIMIT"
+            warnings=$((warnings + 1))
+        fi
+    fi
+
+    # LOC governance is advisory — always pass, but print warnings
+    if [[ $warnings -gt 0 ]]; then
+        echo "LOC governance: $warnings advisory warning(s) — not blocking"
+    fi
+    return 0
+}
+
 # ── Checks Registry (single source of truth) ──
 # Used by: deploy-phase5-wiki-llm.sh validate_all()
 PHASE5_CHECKS=(
@@ -149,6 +199,7 @@ PHASE5_CHECKS=(
     "Backup Script:validate_wiki_llm_backup_script"
     "RAG Sync Script:validate_wiki_rag_sync_script"
     "Netdata Phase 5:validate_netdata_phase5"
+    "LOC Governance:validate_loc_governance"
     "Secrets Not Tracked:validate_secrets_not_tracked"
     "Git Clean:validate_git_commit"
 )
