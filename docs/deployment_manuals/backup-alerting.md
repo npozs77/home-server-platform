@@ -6,7 +6,7 @@
 
 ## Overview
 
-Deploy DAS LUKS backup target, backup orchestration (configs, Immich, Wiki.js stub), container health monitoring with email alerts, and cron scheduling.
+Deploy DAS LUKS backup target, backup orchestration (configs, Immich, Wiki+LLM), container health monitoring with email alerts, independent backup status watchdog, and cron scheduling.
 
 ## Prerequisites
 
@@ -91,11 +91,11 @@ ssh homeserver 'ls -la /root/luks-header-backup-*.img'       # Header backups
 # Copy all backup scripts
 scp scripts/backup/backup-configs.sh homeserver:/opt/homeserver/scripts/backup/
 scp scripts/backup/backup-immich.sh homeserver:/opt/homeserver/scripts/backup/
-scp scripts/backup/backup-wiki.sh homeserver:/opt/homeserver/scripts/backup/
+scp scripts/backup/backup-wiki-llm.sh homeserver:/opt/homeserver/scripts/backup/
 scp scripts/backup/backup-all.sh homeserver:/opt/homeserver/scripts/backup/
 
 # Verify syntax
-ssh homeserver 'for f in backup-configs.sh backup-immich.sh backup-wiki.sh backup-all.sh; do bash -n /opt/homeserver/scripts/backup/$f && echo "$f: OK"; done'
+ssh homeserver 'for f in backup-configs.sh backup-immich.sh backup-wiki-llm.sh backup-all.sh; do bash -n /opt/homeserver/scripts/backup/$f && echo "$f: OK"; done'
 
 # Dry-run orchestrator
 ssh homeserver 'sudo /opt/homeserver/scripts/backup/backup-all.sh --dry-run'
@@ -114,7 +114,33 @@ ssh homeserver 'bash -n /opt/homeserver/scripts/operations/monitoring/check-cont
 ssh homeserver 'sudo /opt/homeserver/scripts/operations/monitoring/check-container-health.sh --dry-run'
 ```
 
-## Step 5: Install Cron and Logrotate
+## Step 5: Deploy Backup Status Watchdog
+
+Independent safety net that runs at 06:00 (after the 02:00 backup window). Catches failures that the backup script itself can't report — crashes during env sourcing, hung processes, or cron not firing at all.
+
+**What it checks**:
+- Today's backup log exists (`/var/log/homeserver/backup-YYYYMMDD.log`)
+- Log contains "All backup jobs completed successfully"
+- Sends email alert if either check fails
+
+```bash
+# Copy watchdog script
+scp scripts/operations/monitoring/check-backup-status.sh homeserver:/opt/homeserver/scripts/operations/monitoring/
+ssh homeserver 'sudo chmod 755 /opt/homeserver/scripts/operations/monitoring/check-backup-status.sh'
+
+# Verify syntax
+ssh homeserver 'bash -n /opt/homeserver/scripts/operations/monitoring/check-backup-status.sh'
+
+# Test manually (should report OK if backup ran today, FAILED/MISSING otherwise)
+ssh homeserver 'sudo /opt/homeserver/scripts/operations/monitoring/check-backup-status.sh'
+```
+
+The cron entry is included in `homeserver-cron` (installed in Step 6):
+```
+0 6 * * * root /opt/homeserver/scripts/operations/monitoring/check-backup-status.sh >> /var/log/homeserver/health-check.log 2>&1
+```
+
+## Step 6: Install Cron and Logrotate
 
 ```bash
 # Copy configs
@@ -132,13 +158,13 @@ ssh homeserver 'sudo cp /opt/homeserver/configs/logrotate/homeserver-backups /et
 ssh homeserver 'sudo mkdir -p /var/log/homeserver && sudo chmod 750 /var/log/homeserver'
 ```
 
-## Step 6: Deploy Documentation
+## Step 7: Deploy Documentation
 
 ```bash
 scp docs/12-runbooks.md homeserver:/opt/homeserver/docs/12-runbooks.md
 ```
 
-## Step 7: Git Commit on Server
+## Step 8: Git Commit on Server
 
 ```bash
 ssh homeserver 'cd /opt/homeserver && git add scripts/ configs/ docs/ && git commit -m "feat(backup): deploy backup-alerting system"'
@@ -146,7 +172,7 @@ ssh homeserver 'cd /opt/homeserver && git add scripts/ configs/ docs/ && git com
 
 ## Validation Checklist
 
-Run these 15 checks to verify the deployment:
+Run these 16 checks to verify the deployment:
 
 ```bash
 # 1. LUKS container (skip if --no-luks)
@@ -162,10 +188,10 @@ ssh homeserver 'grep -q "backup_crypt.*nofail,noauto" /etc/crypttab && echo "PAS
 ssh homeserver 'grep -q "/mnt/backup.*nofail" /etc/fstab && echo "PASS: fstab"'
 
 # 5. Backup directory structure
-ssh homeserver 'ls -d /mnt/backup/configs/ /mnt/backup/immich/ /mnt/backup/wiki/ 2>/dev/null && echo "PASS: Dirs"'
+ssh homeserver 'ls -d /mnt/backup/configs/ /mnt/backup/immich/ /mnt/backup/wiki-llm/ 2>/dev/null && echo "PASS: Dirs"'
 
 # 6. Backup scripts exist
-ssh homeserver 'ls /opt/homeserver/scripts/backup/backup-all.sh /opt/homeserver/scripts/backup/backup-configs.sh /opt/homeserver/scripts/backup/backup-wiki.sh && echo "PASS: Scripts"'
+ssh homeserver 'ls /opt/homeserver/scripts/backup/backup-all.sh /opt/homeserver/scripts/backup/backup-configs.sh /opt/homeserver/scripts/backup/backup-wiki-llm.sh && echo "PASS: Scripts"'
 
 # 7. Immich backup retrofitted
 ssh homeserver 'grep -q "mountpoint -q" /opt/homeserver/scripts/backup/backup-immich.sh && echo "PASS: Immich retrofit"'
@@ -174,7 +200,7 @@ ssh homeserver 'grep -q "mountpoint -q" /opt/homeserver/scripts/backup/backup-im
 ssh homeserver 'grep -q "critical-containers.conf" /opt/homeserver/scripts/operations/monitoring/check-container-health.sh && echo "PASS: Health config"'
 
 # 9. Cron jobs configured
-ssh homeserver 'grep -q "0 2 \* \* \*" /etc/cron.d/homeserver-cron && grep -q "\*/15 \* \* \* \*" /etc/cron.d/homeserver-cron && echo "PASS: Cron"'
+ssh homeserver 'grep -q "0 2 \* \* \*" /etc/cron.d/homeserver-cron && grep -q "\*/15 \* \* \* \*" /etc/cron.d/homeserver-cron && grep -q "0 6 \* \* \*" /etc/cron.d/homeserver-cron && echo "PASS: Cron"'
 
 # 10. Log directory
 ssh homeserver 'test -d /var/log/homeserver && stat -c "%a" /var/log/homeserver | grep -q "750" && echo "PASS: Log dir"'
@@ -193,6 +219,9 @@ ssh homeserver 'ls /root/luks-header-backup-sdb2.img /root/luks-header-backup-nv
 
 # 15. LUKS runbook
 ssh homeserver 'grep -q "LUKS Disk Encryption Recovery" /opt/homeserver/docs/12-runbooks.md && echo "PASS: Runbook"'
+
+# 16. Backup status watchdog
+ssh homeserver 'test -x /opt/homeserver/scripts/operations/monitoring/check-backup-status.sh && echo "PASS: Watchdog"'
 ```
 
 ## Troubleshooting
