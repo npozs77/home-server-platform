@@ -76,6 +76,7 @@ OPENWEBUI_MEM_LIMIT="$OPENWEBUI_MEM_LIMIT"
 OPENWEBUI_CPU_LIMIT="$OPENWEBUI_CPU_LIMIT"
 ENABLE_WEB_SEARCH="$ENABLE_WEB_SEARCH"
 WEB_SEARCH_ENGINE="$WEB_SEARCH_ENGINE"
+ENABLE_SIGNUP="$ENABLE_SIGNUP"
 EOF
     fi
     chmod 644 "$SERVICES_CONFIG"
@@ -113,14 +114,35 @@ init_config() {
     read -p "Open WebUI CPU limit [${OPENWEBUI_CPU_LIMIT:-2.0}]: " input; OPENWEBUI_CPU_LIMIT="${input:-${OPENWEBUI_CPU_LIMIT:-2.0}}"
     read -p "Enable web search [${ENABLE_WEB_SEARCH:-true}]: " input; ENABLE_WEB_SEARCH="${input:-${ENABLE_WEB_SEARCH:-true}}"
     read -p "Web search engine [${WEB_SEARCH_ENGINE:-duckduckgo}]: " input; WEB_SEARCH_ENGINE="${input:-${WEB_SEARCH_ENGINE:-duckduckgo}}"
+    ENABLE_SIGNUP="${ENABLE_SIGNUP:-true}"
 
     echo ""
     save_config
+
+    # Auto-generate Open WebUI user passwords in secrets.env if not already set
+    print_info "Checking Open WebUI user passwords in secrets.env..."
+    local all_users="${ADMIN_USER:-admin} ${POWER_USERS:-} ${STANDARD_USERS:-}"
+    for user in $all_users; do
+        local var_name="OPENWEBUI_PASSWORD_${user}"
+        # Check if already set (uncommented) in secrets.env
+        if grep -q "^${var_name}=" "$SECRETS_CONFIG" 2>/dev/null; then
+            print_info "$var_name already set in secrets.env"
+        else
+            local new_pass
+            new_pass=$(tr -dc 'A-Za-z0-9!@#$%' </dev/urandom | head -c 16 || true)
+            # Remove commented-out placeholder if present
+            sed -i "/^# *${var_name}=/d" "$SECRETS_CONFIG" 2>/dev/null || true
+            echo "${var_name}=\"${new_pass}\"" >> "$SECRETS_CONFIG"
+            print_success "Generated $var_name in secrets.env"
+        fi
+    done
+    chmod 600 "$SECRETS_CONFIG"
+
     echo ""
-    print_info "IMPORTANT: Set secrets in secrets.env before deploying"
+    print_info "IMPORTANT: Remaining secrets to set in secrets.env"
     echo "Required before Sub-phase A: WIKI_DB_PASSWORD"
     echo "Obtained after Wiki.js setup wizard: WIKI_API_TOKEN"
-    echo "Obtained after Open WebUI first-user setup: OPENWEBUI_API_TOKEN"
+    echo "Obtained after Open WebUI login: OPENWEBUI_API_TOKEN"
 }
 
 # Validate Phase 5 configuration
@@ -135,6 +157,9 @@ validate_config() {
     [[ "$WIKI_PORT" =~ ^[0-9]+$ ]] && print_success "Wiki port valid: $WIKI_PORT" || { print_error "Wiki port invalid"; status=1; }
     [[ "$OPENWEBUI_PORT" =~ ^[0-9]+$ ]] && print_success "Chat port valid: $OPENWEBUI_PORT" || { print_error "Chat port invalid"; status=1; }
     if [[ -n "${WIKI_DB_PASSWORD:-}" ]]; then print_success "WIKI_DB_PASSWORD set"; else print_info "WIKI_DB_PASSWORD not set (required before deploying Wiki stack)"; fi
+    # Check Open WebUI admin password
+    local admin_pwd_var="OPENWEBUI_PASSWORD_${ADMIN_USER:-admin}"
+    if [[ -n "${!admin_pwd_var:-}" ]]; then print_success "$admin_pwd_var set"; else print_info "$admin_pwd_var not set (required before provisioning Open WebUI users)"; fi
     echo ""
     [[ $status -eq 0 ]] && { print_success "All configuration checks passed!"; return 0; } || { print_error "Some checks failed"; return 1; }
 }
@@ -167,7 +192,7 @@ execute_task_5_6() {
     bash /opt/homeserver/scripts/deploy/tasks/task-ph5-06-create-ollama-directories.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 execute_task_5_7() {
-    load_config || return 1; export DATA_MOUNT OLLAMA_VERSION OPENWEBUI_VERSION OLLAMA_MEM_LIMIT OLLAMA_CPU_LIMIT OPENWEBUI_MEM_LIMIT OPENWEBUI_CPU_LIMIT ENABLE_WEB_SEARCH WEB_SEARCH_ENGINE TIMEZONE
+    load_config || return 1; export DATA_MOUNT OLLAMA_VERSION OPENWEBUI_VERSION OLLAMA_MEM_LIMIT OLLAMA_CPU_LIMIT OPENWEBUI_MEM_LIMIT OPENWEBUI_CPU_LIMIT ENABLE_WEB_SEARCH WEB_SEARCH_ENGINE ENABLE_SIGNUP TIMEZONE
     bash /opt/homeserver/scripts/deploy/tasks/task-ph5-07-deploy-llm-stack.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 execute_task_5_8() {
@@ -183,7 +208,14 @@ execute_task_5_10() {
     bash /opt/homeserver/scripts/deploy/tasks/task-ph5-10-configure-chat-dns.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 execute_task_5_11() {
-    load_config || return 1; export ADMIN_USER POWER_USERS STANDARD_USERS OPENWEBUI_DOMAIN OPENWEBUI_API_TOKEN ADMIN_EMAIL
+    load_config || return 1; export ADMIN_USER ADMIN_EMAIL POWER_USERS STANDARD_USERS OPENWEBUI_DOMAIN OPENWEBUI_PORT
+    # Export per-user passwords from secrets.env (OPENWEBUI_PASSWORD_<username>)
+    for user in $ADMIN_USER $POWER_USERS $STANDARD_USERS; do
+        local var="OPENWEBUI_PASSWORD_${user}"
+        [[ -n "${!var:-}" ]] && export "$var"
+    done
+    # Export compose paths for signup disable step
+    export FOUNDATION_CONFIG SERVICES_CONFIG SECRETS_CONFIG
     bash /opt/homeserver/scripts/deploy/tasks/task-ph5-11-provision-openwebui-users.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
 

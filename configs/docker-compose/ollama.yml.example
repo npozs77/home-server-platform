@@ -17,7 +17,7 @@ services:
     networks:
       - homeserver
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/11434'"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -43,7 +43,7 @@ services:
       - /mnt/data/services/openwebui/data:/app/backend/data:rw
     environment:
       OLLAMA_BASE_URL: "http://ollama:11434"
-      ENABLE_SIGNUP: "false"
+      ENABLE_SIGNUP: "${ENABLE_SIGNUP:-true}"
       ENABLE_WEB_SEARCH: "${ENABLE_WEB_SEARCH:-true}"
       WEB_SEARCH_ENGINE: "${WEB_SEARCH_ENGINE:-duckduckgo}"
       TZ: ${TIMEZONE}

@@ -52,7 +52,7 @@ START_TIME=$(date +%s)
 
 # Create missing backup subdirectories
 mkdir -p "${BACKUP_MOUNT}/configs/homeserver" "${BACKUP_MOUNT}/configs/system"
-mkdir -p "${BACKUP_MOUNT}/immich" "${BACKUP_MOUNT}/wiki"
+mkdir -p "${BACKUP_MOUNT}/immich" "${BACKUP_MOUNT}/wiki" "${BACKUP_MOUNT}/wiki-llm"
 
 # Job runner with failure isolation
 FAILURES=0
@@ -78,6 +78,7 @@ run_job() {
 run_job "${BACKUP_DIR}/backup-configs.sh" "backup-configs"
 run_job "${BACKUP_DIR}/backup-immich.sh" "backup-immich"
 run_job "${BACKUP_DIR}/backup-wiki.sh" "backup-wiki"
+run_job "${BACKUP_DIR}/backup-wiki-llm.sh" "backup-wiki-llm"
 
 # DB dump retention: remove dumps older than 30 days
 if ! $DRY_RUN; then
