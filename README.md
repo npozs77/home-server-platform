@@ -163,8 +163,6 @@ Script size guidelines enforced by `scripts/operations/validate-governance.sh`:
 
 ## Notes
 
-- **Private repo** — contains Kiro specs, steering files, and development artifacts
 - Secrets (`.env`, keys, certs) are gitignored and never committed
 - Pre-commit hook scans for PII/secrets via [gitleaks](https://github.com/gitleaks/gitleaks) — run `bash scripts/setup-hooks.sh` after cloning
-- `input/` and `OLD/` directories are gitignored
 - Companion public repo (published separately) holds generic operational documentation

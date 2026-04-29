@@ -29,6 +29,9 @@ DRY_RUN=false
 
 print_header "Task 5.13: Verify Phase 5 Documentation"
 
+# This task is a read-only verification — safe to run multiple times (skipping
+# any modification). If all docs already exist, it simply reports success.
+
 # Documentation files that must exist
 DOC_FILES=(
     "/opt/homeserver/docs/deployment_manuals/phase5-wiki-llm.md"
