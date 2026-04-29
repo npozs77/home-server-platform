@@ -10,3 +10,6 @@
 
 # Container health check every 15 minutes
 */15 * * * * root /opt/homeserver/scripts/operations/monitoring/check-container-health.sh >> /var/log/homeserver/health-check.log 2>&1
+
+# Backup status watchdog at 06:00 (independent check that backup ran and succeeded)
+0 6 * * * root /opt/homeserver/scripts/operations/monitoring/check-backup-status.sh >> /var/log/homeserver/health-check.log 2>&1
