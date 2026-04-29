@@ -389,6 +389,43 @@ Stored at `/root/` with 600 permissions and also copied to `/mnt/backup/configs/
 
 See `docs/12-runbooks.md` → LUKS Disk Encryption Recovery for recovery procedures.
 
+## DAS Power Management
+
+### Disk Spindown
+
+Both DAS disks are configured to spin down after 10 minutes idle via `hdparm`.
+
+| Disk | Device | Size | Use | Spindown | APM |
+|------|--------|------|-----|----------|-----|
+| Backup | sdb (`usb-TerraMas_TDAS_WKPSM2W8`) | 1TB | LUKS backup partition | 10 min | 127 |
+| Future | sdc (`usb-TerraMas_TDAS_WSC30NR9`) | 8TB | Unmounted (future use) | 10 min | N/A |
+
+Config persisted in `/etc/hdparm.conf`. Applied automatically on boot.
+
+### What Wakes the Disks
+
+- Daily backup at 02:00 (`backup-all.sh` writes to `/mnt/backup`)
+- Any manual access to `/mnt/backup`
+
+### What Does NOT Wake the Disks
+
+- Container health check (only runs `docker inspect`)
+- `mountpoint -q` check (kernel-level, no block I/O)
+
+### Fan Behavior
+
+The D4-320 fan is hardware-controlled and runs whenever the enclosure is powered. `hdparm` controls disk spindown only, not the fan.
+
+### Check Status / Re-apply
+
+```bash
+# Check current disk power state
+sudo bash /opt/homeserver/scripts/operations/das-power-management.sh status
+
+# Re-apply spindown settings (if needed after reboot issues)
+sudo bash /opt/homeserver/scripts/operations/das-power-management.sh apply
+```
+
 ## Related Documentation
 
 - Architecture Overview: docs/00-architecture-overview.md
