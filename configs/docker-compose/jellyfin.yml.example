@@ -11,7 +11,7 @@ services:
       - /mnt/data/media:/media:ro                      # Media library (read-only)
     environment:
       TZ: "Europe/Amsterdam"
-      JELLYFIN_PublishedServerUrl: "https://media.home.example.com"  # Public URL for clients
+      JELLYFIN_PublishedServerUrl: "https://media.home.mydomain.com"  # Public URL for clients
     group_add:
       - "1002"  # media group GID - allows Jellyfin to read media files
     networks:

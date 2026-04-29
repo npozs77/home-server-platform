@@ -173,7 +173,7 @@ SERVER_IP="192.168.1.2"
 
 # User Configuration
 ADMIN_USER="admin"
-ADMIN_EMAIL="admin@example.com"
+ADMIN_EMAIL="admin@mydomain.com"
 
 # Git Configuration
 GIT_USER_NAME="Admin User"
@@ -370,6 +370,7 @@ sudo cp /opt/homeserver/configs/secrets.env \
   - `configs/caddy/Caddyfile.example` - Caddy reverse proxy configuration
   - `configs/samba/smb.conf.example` - Samba file sharing configuration
   - `configs/docker-compose/samba.yml.example` - Samba Docker Compose
+  - `configs/docker-compose/jellyfin.yml.example` - Jellyfin Docker Compose
 - Deployment Manuals: 
   - `docs/deployment_manuals/phase1-foundation.md`
   - `docs/deployment_manuals/phase2-infrastructure.md`
