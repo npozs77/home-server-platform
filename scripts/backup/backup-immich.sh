@@ -22,8 +22,10 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UTILS_DIR="${SCRIPT_DIR}/../operations/utils"
 source "${UTILS_DIR}/log-utils.sh"
-source "${UTILS_DIR}/env-utils.sh"
-load_env_files || log_msg "WARN" "$SCRIPT_NAME" "Could not load env files"
+
+# Load only foundation.env and services.env (backup scripts do not need secrets.env)
+[[ -f /opt/homeserver/configs/foundation.env ]] && source /opt/homeserver/configs/foundation.env
+[[ -f /opt/homeserver/configs/services.env ]] && source /opt/homeserver/configs/services.env
 
 BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
 BACKUP_DEST="${BACKUP_DEST:-${BACKUP_MOUNT}/immich}"

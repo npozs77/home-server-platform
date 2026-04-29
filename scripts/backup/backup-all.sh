@@ -23,8 +23,10 @@ done
 BACKUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UTILS_DIR="${BACKUP_DIR}/../operations/utils"
 source "${UTILS_DIR}/log-utils.sh"
-source "${UTILS_DIR}/env-utils.sh"
-load_env_files || log_msg "WARN" "$SCRIPT_NAME" "Could not load env files"
+
+# Load only foundation.env and services.env (backup orchestrator does not need secrets.env)
+[[ -f /opt/homeserver/configs/foundation.env ]] && source /opt/homeserver/configs/foundation.env
+[[ -f /opt/homeserver/configs/services.env ]] && source /opt/homeserver/configs/services.env
 
 BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
 
@@ -52,7 +54,7 @@ START_TIME=$(date +%s)
 
 # Create missing backup subdirectories
 mkdir -p "${BACKUP_MOUNT}/configs/homeserver" "${BACKUP_MOUNT}/configs/system"
-mkdir -p "${BACKUP_MOUNT}/immich" "${BACKUP_MOUNT}/wiki" "${BACKUP_MOUNT}/wiki-llm"
+mkdir -p "${BACKUP_MOUNT}/immich" "${BACKUP_MOUNT}/wiki-llm"
 
 # Job runner with failure isolation
 FAILURES=0
@@ -77,7 +79,6 @@ run_job() {
 # Run backup jobs in order
 run_job "${BACKUP_DIR}/backup-configs.sh" "backup-configs"
 run_job "${BACKUP_DIR}/backup-immich.sh" "backup-immich"
-run_job "${BACKUP_DIR}/backup-wiki.sh" "backup-wiki"
 run_job "${BACKUP_DIR}/backup-wiki-llm.sh" "backup-wiki-llm"
 
 # DB dump retention: remove dumps older than 30 days

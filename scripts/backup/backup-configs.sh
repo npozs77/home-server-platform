@@ -15,8 +15,10 @@ DRY_RUN_FLAG=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UTILS_DIR="${SCRIPT_DIR}/../operations/utils"
 source "${UTILS_DIR}/log-utils.sh"
-source "${UTILS_DIR}/env-utils.sh"
-load_env_files || log_msg "WARN" "$SCRIPT_NAME" "Could not load env files"
+
+# Load only foundation.env and services.env (backup scripts do not need secrets.env)
+[[ -f /opt/homeserver/configs/foundation.env ]] && source /opt/homeserver/configs/foundation.env
+[[ -f /opt/homeserver/configs/services.env ]] && source /opt/homeserver/configs/services.env
 
 BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
 BACKUP_DEST="${BACKUP_MOUNT}/configs"
@@ -97,6 +99,24 @@ for pattern in /etc/msmtp* /etc/logrotate.d/homeserver-*; do
         fi
     done
 done
+
+# Copy gitleaks config and git hooks (PII-sensitive, not in Git)
+for f in /opt/homeserver/.gitleaks.toml; do
+    [[ -e "$f" ]] || continue
+    if $DRY_RUN; then
+        log_msg "INFO" "$SCRIPT_NAME" "dry-run: would copy $f"
+    else
+        cp -p "$f" "${BACKUP_DEST}/homeserver/" || { log_msg "WARN" "$SCRIPT_NAME" "Failed to copy $f"; }
+    fi
+done
+if [[ -d /opt/homeserver/.git/hooks ]]; then
+    mkdir -p "${BACKUP_DEST}/homeserver/git-hooks"
+    if $DRY_RUN; then
+        log_msg "INFO" "$SCRIPT_NAME" "dry-run: would sync .git/hooks/"
+    else
+        rsync -a $DRY_RUN_FLAG /opt/homeserver/.git/hooks/ "${BACKUP_DEST}/homeserver/git-hooks/" || { log_msg "WARN" "$SCRIPT_NAME" "Failed to sync .git/hooks/"; }
+    fi
+fi
 
 # Copy LUKS header backups
 for f in /root/luks-header-backup-*.img; do
