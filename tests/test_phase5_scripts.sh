@@ -59,7 +59,7 @@ test_config_management_functions() {
 
 test_task_execution_functions() {
     run_test "Deployment script has task delegation functions"
-    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12 14; do
         grep -qE "^[[:space:]]*(function[[:space:]]+)?execute_task_5_${i}\(\)" "$DEPLOY_SCRIPT" && print_pass "execute_task_5_${i}() exists" || print_fail "execute_task_5_${i}() missing"
     done
 }
@@ -115,7 +115,7 @@ test_phase5_config_variables() {
 
 test_task_module_delegation() {
     run_test "Task functions delegate to task-ph5-*.sh modules"
-    for module in task-ph5-01 task-ph5-02 task-ph5-03 task-ph5-04 task-ph5-05 task-ph5-06 task-ph5-07 task-ph5-08 task-ph5-09 task-ph5-10 task-ph5-11 task-ph5-12 task-ph5-13 task-ph5-14; do
+    for module in task-ph5-01 task-ph5-02 task-ph5-03 task-ph5-04 task-ph5-05 task-ph5-06 task-ph5-07 task-ph5-08 task-ph5-09 task-ph5-10 task-ph5-11 task-ph5-12 task-ph5-14; do
         grep -q "$module" "$DEPLOY_SCRIPT" && print_pass "Delegates to $module" || print_fail "Missing delegation to $module"
     done
 }
@@ -393,25 +393,6 @@ test_task_ph5_14_content() {
     echo "$c" | grep -q "DRY_RUN\|dry-run" && print_pass "Has dry-run support" || print_fail "Missing dry-run support"
 }
 
-test_task_ph5_13_content() {
-    run_test "task-ph5-13 (create documentation) content validation"
-    local f="${TASK_DIR}/task-ph5-13-create-documentation.sh"
-    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
-    bash -n "$f" 2>/dev/null && print_pass "Valid bash syntax" || print_fail "Syntax errors"
-    local c; c=$(cat "$f")
-    echo "$c" | grep -q "set -euo pipefail" && print_pass "Has safety flags" || print_fail "Missing safety flags"
-    echo "$c" | grep -q "DRY_RUN\|dry-run" && print_pass "Has dry-run support" || print_fail "Missing dry-run support"
-    # Validates doc file creation targets
-    echo "$c" | grep -q "phase5-wiki-llm.md" && print_pass "Checks deployment manual" || print_fail "Missing deployment manual check"
-    echo "$c" | grep -q "10-wiki-setup.md" && print_pass "Checks wiki setup doc" || print_fail "Missing wiki setup doc check"
-    echo "$c" | grep -q "11-llm-setup.md" && print_pass "Checks LLM setup doc" || print_fail "Missing LLM setup doc check"
-    # Validates update targets
-    echo "$c" | grep -q "00-architecture-overview.md" && print_pass "Checks architecture overview update" || print_fail "Missing architecture overview check"
-    echo "$c" | grep -q "05-storage.md" && print_pass "Checks storage doc update" || print_fail "Missing storage doc check"
-    echo "$c" | grep -q "13-container-restart-procedure.md" && print_pass "Checks restart procedure update" || print_fail "Missing restart procedure check"
-    echo "$c" | grep -q "README.md" && print_pass "Checks README update" || print_fail "Missing README check"
-}
-
 test_backup_script_content() {
     run_test "backup-wiki-llm.sh content validation"
     local f="scripts/backup/backup-wiki-llm.sh"
@@ -507,7 +488,6 @@ main() {
     test_task_ph5_10_content || true
     test_task_ph5_11_content || true
     test_task_ph5_12_content || true
-    test_task_ph5_13_content || true
     test_task_ph5_14_content || true
     test_backup_script_content || true
     test_wiki_rag_sync_content || true

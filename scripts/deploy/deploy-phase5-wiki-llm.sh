@@ -224,10 +224,6 @@ execute_task_5_12() {
     load_config || return 1; export DATA_MOUNT WIKI_DB_USER WIKI_DB_NAME
     bash /opt/homeserver/scripts/deploy/tasks/task-ph5-12-deploy-backup-script.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
 }
-execute_task_5_13() {
-    load_config || return 1
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph5-13-create-documentation.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
-}
 execute_task_5_14() {
     load_config || return 1; export OPENWEBUI_DOMAIN OPENWEBUI_API_TOKEN
     bash /opt/homeserver/scripts/deploy/tasks/task-ph5-14-deploy-wiki-rag-sync.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
@@ -288,7 +284,6 @@ main_menu() {
         echo ""
         echo "--- Shared Components ---"
         echo "5.12. Deploy backup script"
-        echo "5.13. Create documentation"
         echo "5.14. Deploy wiki-to-RAG sync script (*)"
         echo ""
         echo "v. Validate all"
@@ -312,7 +307,6 @@ main_menu() {
             5.10) execute_task_5_10 ;;
             5.11) execute_task_5_11 ;;
             5.12) execute_task_5_12 ;;
-            5.13) execute_task_5_13 ;;
             5.14) execute_task_5_14 ;;
             v) validate_all ;;
             q) echo "Exiting..."; exit 0 ;;
