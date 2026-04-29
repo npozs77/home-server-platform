@@ -35,19 +35,26 @@ Data storage organization across two LUKS-encrypted partitions:
     ├── jellyfin/             # Jellyfin persistent data (755, root:root)
     │   ├── config/           # Jellyfin configuration (755, root:root)
     │   └── cache/            # Jellyfin transcoding cache (755, root:root)
-    └── immich/               # Immich photo management data (755, root:root)
-        ├── postgres/         # PostgreSQL data via DB_DATA_LOCATION (700, 999:999 — postgres container user)
-        └── upload/           # Immich data root via UPLOAD_LOCATION → /data (755, root:root)
-            ├── backups/      # Immich auto DB backups
-            ├── encoded-video/  # Transcoded video files
-            ├── library/      # ← ORIGINALS stored here (Storage Template)
-            │   ├── admin/    # Admin user (storage label = "admin")
-            │   │   └── YYYY/YYYY-MM-DD/  # Date-organized originals
-            │   └── {user_uuid}/  # Regular user (storage label = UUID)
-            │       └── YYYY/YYYY-MM-DD/  # Date-organized originals
-            ├── profile/      # User profile photos
-            ├── thumbs/       # Generated thumbnails
-            └── upload/       # Staging directory (empty after processing)
+    ├── immich/               # Immich photo management data (755, root:root)
+    │   ├── postgres/         # PostgreSQL data via DB_DATA_LOCATION (700, 999:999 — postgres container user)
+    │   └── upload/           # Immich data root via UPLOAD_LOCATION → /data (755, root:root)
+    │       ├── backups/      # Immich auto DB backups
+    │       ├── encoded-video/  # Transcoded video files
+    │       ├── library/      # ← ORIGINALS stored here (Storage Template)
+    │       │   ├── admin/    # Admin user (storage label = "admin")
+    │       │   │   └── YYYY/YYYY-MM-DD/  # Date-organized originals
+    │       │   └── {user_uuid}/  # Regular user (storage label = UUID)
+    │       │       └── YYYY/YYYY-MM-DD/  # Date-organized originals
+    │       ├── profile/      # User profile photos
+    │       ├── thumbs/       # Generated thumbnails
+    │       └── upload/       # Staging directory (empty after processing)
+    ├── wiki/                 # Wiki.js service data (755, root:root)
+    │   ├── postgres/         # PostgreSQL data for Wiki.js (700, 999:999 — postgres container user)
+    │   └── content/          # Wiki.js Local File System storage (markdown page exports)
+    ├── ollama/               # Ollama LLM runtime data (755, root:root)
+    │   └── models/           # Downloaded LLM models (ollama volume → /root/.ollama)
+    └── openwebui/            # Open WebUI chat interface data (755, root:root)
+        └── data/             # SQLite DB, chat history, RAG embeddings, uploaded docs
 ```
 
 ## Top-Level Directories
@@ -161,6 +168,63 @@ Data storage organization across two LUKS-encrypted partitions:
 - **Docker Mount**: UPLOAD_LOCATION → /data in immich-server container
 - **Samba Mount**: Read-only mount in Samba container for per-user upload shares (library/ subdirectory)
 - **Structure**: Immich v2 with Storage Template stores originals in `library/{storage_label}/YYYY/YYYY-MM-DD/filename.ext` where storage_label is "admin" for the admin user and the user's UUID for regular users. The `upload/` subdirectory inside is a staging area (empty after processing).
+
+### /mnt/data/services/wiki/
+- **Purpose**: Wiki.js service persistent data
+- **Permissions**: 755 (root:root)
+- **Access**: Readable by all, writable by root
+- **Subdirectories**: postgres/, content/
+- **Created**: Phase 5, Task 5.1
+
+### /mnt/data/services/wiki/postgres/
+- **Purpose**: PostgreSQL database data (wiki content, user accounts, configuration, revision history)
+- **Permissions**: 700 (999:999 — postgres container user)
+- **Access**: PostgreSQL process inside container only
+- **Use Cases**: Wiki.js metadata, user accounts, page content, revision history
+- **Created**: Phase 5, Task 5.1
+- **Backup**: pg_dump only (NOT filesystem copy — see docs/10-wiki-setup.md)
+- **Docker Mount**: /var/lib/postgresql/data in wiki-db container
+
+### /mnt/data/services/wiki/content/
+- **Purpose**: Wiki.js Local File System storage module (markdown page exports)
+- **Permissions**: 755 (root:root)
+- **Access**: wiki-server container (read-write)
+- **Use Cases**: Disk-backed content recovery, source for wiki-to-RAG sync
+- **Created**: Phase 5, Task 5.1
+- **Docker Mount**: /wiki/data/content in wiki-server container
+- **Note**: NOT the homeserver infrastructure repo — wiki content is user data. Sync direction: Wiki.js → Disk (one-way push).
+
+### /mnt/data/services/ollama/
+- **Purpose**: Ollama LLM runtime persistent data
+- **Permissions**: 755 (root:root)
+- **Access**: Readable by all, writable by root
+- **Subdirectories**: models/
+- **Created**: Phase 5, Task 5.6
+
+### /mnt/data/services/ollama/models/
+- **Purpose**: Downloaded LLM model files
+- **Permissions**: 755 (root:root)
+- **Access**: ollama container (read-write)
+- **Use Cases**: Persists downloaded models across container recreations
+- **Created**: Phase 5, Task 5.6
+- **Docker Mount**: /root/.ollama in ollama container
+- **Note**: Models can be large (2-8GB each). Can be re-pulled from Ollama registry if lost.
+
+### /mnt/data/services/openwebui/
+- **Purpose**: Open WebUI chat interface persistent data
+- **Permissions**: 755 (root:root)
+- **Access**: Readable by all, writable by root
+- **Subdirectories**: data/
+- **Created**: Phase 5, Task 5.6
+
+### /mnt/data/services/openwebui/data/
+- **Purpose**: Open WebUI SQLite database, chat history, RAG embeddings, uploaded documents
+- **Permissions**: 755 (root:root)
+- **Access**: open-webui container (read-write)
+- **Use Cases**: User accounts, per-user chat history, uploaded documents, RAG vector embeddings
+- **Created**: Phase 5, Task 5.6
+- **Docker Mount**: /app/backend/data in open-webui container
+- **Backup**: rsync to /mnt/backup/wiki-llm/openwebui-data/
 
 ## Backup Subdirectories
 
@@ -349,9 +413,10 @@ External DAS (Direct Attached Storage) with ~900GB LUKS-encrypted partition used
 │   ├── upload/                       # rsync mirror of Immich uploads
 │   ├── media-photos/                 # rsync mirror of media photos
 │   └── family-photos/               # rsync mirror of family photos
-└── wiki/                             # Wiki.js backup (root:root, 755)
+└── wiki/                             # Wiki.js + LLM backup (root:root, 755)
     ├── wiki-db-YYYYMMDD_HHMMSS.sql   # Timestamped DB dumps (30-day retention)
-    └── data/                         # rsync mirror of wiki data directory
+    ├── wiki-content/                  # rsync mirror of wiki disk storage
+    └── openwebui-data/               # rsync mirror of Open WebUI data (chat history, RAG)
 ```
 
 ### Ownership and Permissions
@@ -367,7 +432,7 @@ External DAS (Direct Attached Storage) with ~900GB LUKS-encrypted partition used
 | `configs/homeserver/` | Mirror of `/opt/homeserver/configs/` and `scripts/` | `backup-configs.sh` | `rsync -a --delete` |
 | `configs/system/` | System config files (fstab, crypttab, sshd, msmtp, logrotate, LUKS headers) | `backup-configs.sh` | File copy |
 | `immich/` | Immich database dumps + photo/upload mirrors | `backup-immich.sh` | `pg_dump` + `rsync -a --delete` |
-| `wiki/` | Wiki.js database dumps + data mirror | `backup-wiki.sh` | `pg_dump` + `rsync -a --delete` (stub until Wiki.js deployed) |
+| `wiki/` | Wiki.js database dumps + disk storage + Open WebUI data mirrors | `backup-wiki-llm.sh` | `pg_dump` + `rsync -a --delete` |
 
 ### Manual Mount/Unmount
 

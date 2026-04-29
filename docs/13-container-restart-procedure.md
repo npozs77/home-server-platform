@@ -39,6 +39,8 @@ Always restart containers in this order to maintain service dependencies:
 3. **Application Services** - Depend on DNS and proxy:
    - Jellyfin
    - Immich (restart order: postgres → redis → server → ml; see Immich section below)
+   - Wiki.js (restart order: wiki-db → wiki-server; see Wiki.js section below)
+   - Ollama + Open WebUI (restart order: ollama → open-webui; see LLM section below)
 
 ---
 
@@ -334,9 +336,208 @@ If upgrade fails or causes issues:
 
 ---
 
+## Wiki.js Family Wiki (Phase 5 — Sub-phase A)
+
+### Restart Order
+
+Wiki.js containers must be restarted in dependency order:
+
+1. **wiki-db** (PostgreSQL database) — must be healthy first
+2. **wiki-server** (Wiki.js application)
+
+```bash
+docker restart wiki-db
+sleep 30  # Wait for PostgreSQL to become healthy
+
+docker restart wiki-server
+sleep 15  # Wait for Wiki.js to become healthy
+
+# Verify all healthy
+docker ps | grep wiki
+```
+
+### Upgrade Procedure
+
+1. **Backup first** (mandatory before any upgrade):
+   ```bash
+   sudo /opt/homeserver/scripts/backup/backup-wiki-llm.sh
+   ```
+
+2. **Update image tag** in wiki.yml (Wiki.js v2 uses `:2` tag — only change for PostgreSQL version bumps):
+   ```bash
+   nano /opt/homeserver/configs/docker-compose/wiki.yml
+   ```
+
+3. **Pull new images**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/wiki.yml pull
+   ```
+
+4. **Recreate containers**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/wiki.yml up -d
+   ```
+
+5. **Validate**:
+   ```bash
+   docker ps | grep wiki
+   # Both containers should show (healthy)
+   curl -k https://wiki.home.mydomain.com
+   # Should return HTTP 200
+   ```
+
+6. **Commit** (if upgrade successful):
+   ```bash
+   cd /opt/homeserver
+   git add configs/docker-compose/wiki.yml
+   git commit -m "Upgrade Wiki.js / PostgreSQL to vX.Y"
+   ```
+
+### Rollback Procedure
+
+If upgrade fails or causes issues:
+
+1. **Revert image tag**:
+   ```bash
+   git checkout configs/docker-compose/wiki.yml
+   ```
+
+2. **Pull old images**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/wiki.yml pull
+   ```
+
+3. **Recreate containers**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/wiki.yml up -d
+   ```
+
+4. **Restore database** (if needed — only if PostgreSQL migration ran):
+   ```bash
+   docker stop wiki-server
+   docker exec -i wiki-db psql -U wikijs -d wikijs < /mnt/backup/wiki-llm/wiki-db-YYYYMMDD_HHMMSS.sql
+   docker start wiki-server
+   ```
+
+5. **Verify rollback**:
+   ```bash
+   docker ps | grep wiki
+   curl -k https://wiki.home.mydomain.com
+   ```
+
+### Wiki.js HEALTHCHECK Commands
+
+| Container | Health Check | Interval |
+|-----------|-------------|----------|
+| wiki-db | `pg_isready -U wikijs -d wikijs` | 10s |
+| wiki-server | `curl -f http://localhost:3000/healthz` | 30s |
+
+---
+
+## Ollama + Open WebUI (Phase 5 — Sub-phase B)
+
+### Restart Order
+
+LLM containers must be restarted in dependency order:
+
+1. **ollama** (LLM runtime) — must be healthy first
+2. **open-webui** (chat interface)
+
+```bash
+docker restart ollama
+sleep 30  # Wait for Ollama to become healthy
+
+docker restart open-webui
+sleep 15  # Wait for Open WebUI to become healthy
+
+# Verify all healthy
+docker ps | grep -E "ollama|open-webui"
+```
+
+### Upgrade Procedure
+
+1. **Backup first** (mandatory before any upgrade):
+   ```bash
+   sudo /opt/homeserver/scripts/backup/backup-wiki-llm.sh
+   ```
+
+2. **Update version** in services.env:
+   ```bash
+   # Edit OLLAMA_VERSION and/or OPENWEBUI_VERSION
+   nano /opt/homeserver/configs/services.env
+   ```
+
+3. **Pull new images**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/ollama.yml pull
+   ```
+
+4. **Recreate containers**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/ollama.yml up -d
+   ```
+
+5. **Validate**:
+   ```bash
+   docker ps | grep -E "ollama|open-webui"
+   # Both containers should show (healthy)
+   curl -k https://chat.home.mydomain.com
+   # Should return HTTP 200
+   docker exec ollama ollama list
+   # Models should still be available
+   ```
+
+6. **Commit** (if upgrade successful):
+   ```bash
+   cd /opt/homeserver
+   git add configs/services.env
+   git commit -m "Upgrade Ollama/Open WebUI to vX.Y"
+   ```
+
+### Rollback Procedure
+
+1. **Revert version**:
+   ```bash
+   git checkout configs/services.env
+   ```
+
+2. **Pull old images**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/ollama.yml pull
+   ```
+
+3. **Recreate containers**:
+   ```bash
+   docker compose -f /opt/homeserver/configs/docker-compose/ollama.yml up -d
+   ```
+
+4. **Restore Open WebUI data** (if needed):
+   ```bash
+   docker stop open-webui
+   rsync -a /mnt/backup/wiki-llm/openwebui-data/ /mnt/data/services/openwebui/data/
+   docker start open-webui
+   ```
+
+5. **Verify rollback**:
+   ```bash
+   docker ps | grep -E "ollama|open-webui"
+   curl -k https://chat.home.mydomain.com
+   ```
+
+### LLM HEALTHCHECK Commands
+
+| Container | Health Check | Interval |
+|-----------|-------------|----------|
+| ollama | `curl -f http://localhost:11434/` | 30s |
+| open-webui | `curl -f http://localhost:8080/health` | 30s |
+
+---
+
 ## Related Documentation
 
 - docs/12-runbooks.md (Network Unreachability troubleshooting)
 - docs/02-infrastructure-layer.md (Infrastructure architecture)
 - docs/09-immich-setup.md (Immich setup and configuration)
+- docs/10-wiki-setup.md (Wiki.js setup and configuration)
+- docs/11-llm-setup.md (LLM setup and configuration)
 - scripts/operations/monitoring/check-container-health.sh (Health monitoring)

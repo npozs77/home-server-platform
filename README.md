@@ -12,6 +12,8 @@ Private infrastructure-as-code repository for a family home server. Manages the 
 | Jellyfin | Media streaming | `media.home.mydomain.com` |
 | Samba | File sharing (SMB) | LAN shares |
 | Immich | Photo management | `photos.home.mydomain.com` |
+| Wiki.js | Family wiki | `wiki.home.mydomain.com` |
+| Open WebUI | AI chat (local LLM) | `chat.home.mydomain.com` |
 
 ## External Services (Free Tier)
 
@@ -28,7 +30,7 @@ Private infrastructure-as-code repository for a family home server. Manages the 
 - **DNS**: Pi-hole (local resolution + ad-blocking)
 - **Monitoring**: Netdata + email alerts (msmtp/SMTP2Go)
 - **File Sharing**: Samba (per-user + family shared + media library)
-- **Backup**: LUKS-encrypted DAS, nightly cron (configs + Immich + Wiki.js stub)
+- **Backup**: LUKS-encrypted DAS, nightly cron (configs + Immich pg_dump + Wiki.js pg_dump + Open WebUI data)
 - **Automation**: Bash scripts, phased deployment with interactive menus
 - **Security**: LUKS disk encryption, SSH key-only, UFW firewall, fail2ban
 
@@ -40,7 +42,7 @@ Private infrastructure-as-code repository for a family home server. Manages the 
 | 02 | Infrastructure | ✅ Deployed | Caddy, Pi-hole, Netdata, SMTP, data directories |
 | 03 | Core Services | ✅ Deployed | Samba, Jellyfin, user provisioning, storage, backup orchestrator, container health checks |
 | 04 | Photo Management | ✅ Deployed | Immich, external library, photo prep tooling |
-| 05 | Family Wiki & AI | 📋 Planned | Wiki.js, local LLM, AI agent with RAG |
+| 05 | Family Wiki & AI | 🚧 In Progress | Wiki.js, local LLM (Ollama + Open WebUI), RAG, wiki-to-RAG sync |
 | 06 | Home Automation | 📋 Planned | Home Assistant, smart device control |
 | 07 | Advanced Features | 📋 Planned | Zero-trust remote access, container lifecycle, optional services |
 
@@ -116,6 +118,7 @@ bash tests/test_backup_alerting.sh        # Backup & alerting (192 assertions)
 bash tests/test_phase1_scripts.sh         # Phase 1 foundation (76 assertions)
 bash tests/test_phase3_scripts.sh         # Phase 3 core services
 bash tests/test_phase4_scripts.sh         # Phase 4 photo management
+bash tests/test_phase5_scripts.sh         # Phase 5 wiki + LLM platform
 ```
 
 ## Configuration

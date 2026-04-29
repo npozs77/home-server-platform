@@ -393,6 +393,25 @@ test_task_ph5_14_content() {
     echo "$c" | grep -q "DRY_RUN\|dry-run" && print_pass "Has dry-run support" || print_fail "Missing dry-run support"
 }
 
+test_task_ph5_13_content() {
+    run_test "task-ph5-13 (create documentation) content validation"
+    local f="${TASK_DIR}/task-ph5-13-create-documentation.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    bash -n "$f" 2>/dev/null && print_pass "Valid bash syntax" || print_fail "Syntax errors"
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "set -euo pipefail" && print_pass "Has safety flags" || print_fail "Missing safety flags"
+    echo "$c" | grep -q "DRY_RUN\|dry-run" && print_pass "Has dry-run support" || print_fail "Missing dry-run support"
+    # Validates doc file creation targets
+    echo "$c" | grep -q "phase5-wiki-llm.md" && print_pass "Checks deployment manual" || print_fail "Missing deployment manual check"
+    echo "$c" | grep -q "10-wiki-setup.md" && print_pass "Checks wiki setup doc" || print_fail "Missing wiki setup doc check"
+    echo "$c" | grep -q "11-llm-setup.md" && print_pass "Checks LLM setup doc" || print_fail "Missing LLM setup doc check"
+    # Validates update targets
+    echo "$c" | grep -q "00-architecture-overview.md" && print_pass "Checks architecture overview update" || print_fail "Missing architecture overview check"
+    echo "$c" | grep -q "05-storage.md" && print_pass "Checks storage doc update" || print_fail "Missing storage doc check"
+    echo "$c" | grep -q "13-container-restart-procedure.md" && print_pass "Checks restart procedure update" || print_fail "Missing restart procedure check"
+    echo "$c" | grep -q "README.md" && print_pass "Checks README update" || print_fail "Missing README check"
+}
+
 test_backup_script_content() {
     run_test "backup-wiki-llm.sh content validation"
     local f="scripts/backup/backup-wiki-llm.sh"
@@ -424,6 +443,22 @@ test_wiki_rag_sync_content() {
     echo "$c" | grep -q "WIKI_CONTENT_DIR\|wiki/content" && print_pass "Reads from wiki content dir" || print_fail "Missing wiki content dir"
     echo "$c" | grep -q "UPLOADED\|uploaded" && print_pass "Tracks upload count" || print_fail "Missing upload tracking"
     echo "$c" | grep -q "REMOVED\|removed\|deleted" && print_pass "Handles deleted pages" || print_fail "Missing deleted page handling"
+}
+
+test_phase5_documentation_files() {
+    run_test "Phase 5 documentation files exist and have content"
+    # New documentation files
+    for doc in "docs/deployment_manuals/phase5-wiki-llm.md" "docs/10-wiki-setup.md" "docs/11-llm-setup.md"; do
+        [[ -f "$doc" ]] && print_pass "$doc exists" || print_fail "$doc missing"
+    done
+    # Updated files contain Phase 5 content
+    grep -q "Wiki.js" "docs/00-architecture-overview.md" && print_pass "Architecture overview updated with Wiki.js" || print_fail "Architecture overview missing Wiki.js"
+    grep -q "wiki/postgres" "docs/05-storage.md" && print_pass "Storage doc updated with wiki directories" || print_fail "Storage doc missing wiki directories"
+    grep -q "wiki-db" "docs/13-container-restart-procedure.md" && print_pass "Restart procedure updated with wiki-db" || print_fail "Restart procedure missing wiki-db"
+    grep -q "wiki.home" "README.md" && print_pass "README updated with wiki.home" || print_fail "README missing wiki.home"
+    grep -q "chat.home" "README.md" && print_pass "README updated with chat.home" || print_fail "README missing chat.home"
+    grep -q "In Progress" "README.md" && print_pass "README Phase 05 status updated" || print_fail "README Phase 05 status not updated"
+    grep -q "test_phase5_scripts.sh" "README.md" && print_pass "README testing section updated" || print_fail "README testing section not updated"
 }
 
 # --- Main ---
@@ -472,9 +507,11 @@ main() {
     test_task_ph5_10_content || true
     test_task_ph5_11_content || true
     test_task_ph5_12_content || true
+    test_task_ph5_13_content || true
     test_task_ph5_14_content || true
     test_backup_script_content || true
     test_wiki_rag_sync_content || true
+    test_phase5_documentation_files || true
 
     echo ""
     echo "========================================"
