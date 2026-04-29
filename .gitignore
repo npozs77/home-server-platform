@@ -5,10 +5,12 @@
 !*.env.example
 .env
 *.secret
+*.yaml
+!*.yaml.example
+!*.yml.example
 
 # Backup files
 *.backup
-*.backup.*
 *.bak
 *~
 
@@ -22,32 +24,34 @@ Thumbs.db
 *.swp
 *.swo
 
-# Deployed configs (not examples — real values, may contain PII)
+
+# Sensitive configuration files (restore from backups, not Git)
+configs/.env
+configs/*-config.env
+configs/secrets.env
 configs/caddy/Caddyfile
-configs/caddy/Caddyfile.backup.*
 configs/caddy/root-ca.crt
 configs/caddy/data/
 configs/caddy/config/
-configs/caddy/pages/starting.html
+configs/pihole/*.conf
+configs/pihole/*.list
+configs/pihole/etc-pihole/
+configs/pihole/etc-dnsmasq.d/
+configs/netdata/
+
+# Docker Compose deployed files (contain real values from env; only .yml.example is Git-tracked)
 configs/docker-compose/*.yml
 !configs/docker-compose/*.yml.example
-configs/samba/smb.conf
-configs/pihole/
-configs/netdata/
-configs/.env
-configs/*-config.env
 
-# Service persistent data
+# Service persistent data (managed by Docker, not Git)
 configs/docker-compose/*/data/
 configs/docker-compose/*/config/
 
-# Stray scripts in root (should be in scripts/)
-/backup-configs.sh
+# PII-sensitive config (contains real domain/usernames for gitleaks scanning)
+.gitleaks.toml
 
-# PII-sensitive config
-
-# Old files, input docs, local-only
+# Old PoC files + Input Documentation (such as concepts, ideas)
 OLD/
 input/
 .kiro/hooks/
-.gitleaks.toml
+``
