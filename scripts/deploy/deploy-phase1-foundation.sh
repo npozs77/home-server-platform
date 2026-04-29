@@ -111,15 +111,12 @@ init_config() {
     DATA_MOUNT="${DATA_MOUNT:-/mnt/data}"
     
     echo ""
-    print_info "Backup DAS configuration:"
+    print_info "Backup DAS configuration (external USB/DAS drive for backups):"
+    print_info "  Leave blank if no backup drive is connected yet."
     read -p "Backup disk partition [${BACKUP_DISK:-/dev/sdb2}]: " input
     BACKUP_DISK="${input:-${BACKUP_DISK:-/dev/sdb2}}"
-    
-    read -p "Backup mount point [${BACKUP_MOUNT:-/mnt/backup}]: " input
-    BACKUP_MOUNT="${input:-${BACKUP_MOUNT:-/mnt/backup}}"
-    
-    read -p "Backup LUKS mapper name [${BACKUP_MAPPER:-backup_crypt}]: " input
-    BACKUP_MAPPER="${input:-${BACKUP_MAPPER:-backup_crypt}}"
+    BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
+    BACKUP_MAPPER="${BACKUP_MAPPER:-backup_crypt}"
     
     read -sp "LUKS passphrase (20+ characters): " input
     echo ""

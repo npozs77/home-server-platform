@@ -231,22 +231,8 @@ validate_all() {
     export DATA_MOUNT INTERNAL_SUBDOMAIN DOMAIN SERVER_IP ADMIN_USER POWER_USER STANDARD_USER
     
     local total=0 passed=0
-    checks=(
-        "Samba Container:validate_samba_container"
-        "Personal Folders:validate_personal_folders"
-        "Family Folders:validate_family_folders"
-        "Media Folders:validate_media_folders"
-        "Personal Shares:validate_personal_shares"
-        "Family Share:validate_family_share"
-        "Media Share:validate_media_share"
-        "Recycle Bin:validate_recycle_bin"
-        "User Scripts:validate_user_scripts"
-        "Jellyfin Container:validate_jellyfin_container"
-        "Jellyfin HTTPS:validate_jellyfin_https"
-        "Jellyfin Media Access:validate_jellyfin_media_access"
-        "DNS Record (Jellyfin):validate_jellyfin_dns"
-        "Git Commit:validate_git_commit"
-    )
+    # PHASE3_CHECKS defined in validation-core-services-utils.sh (single source of truth)
+    checks=("${PHASE3_CHECKS[@]}")
     
     for check in "${checks[@]}"; do
         name="${check%%:*}"

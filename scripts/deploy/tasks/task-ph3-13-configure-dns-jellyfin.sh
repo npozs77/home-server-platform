@@ -133,6 +133,9 @@ else
     
     print_success "Jellyfin DNS record configured"
     print_info "Jellyfin will be accessible at: https://${JELLYFIN_DOMAIN}"
+    print_info ""
+    print_info "IMPORTANT: After DNS configuration, restart Caddy to trigger certificate generation:"
+    print_info "  docker restart caddy"
 fi
 
 print_success "Task complete"

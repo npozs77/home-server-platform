@@ -212,21 +212,8 @@ validate_all() {
     load_config || { print_error "Configuration not loaded"; return 1; }
 
     local total=0 passed=0
-    local checks=(
-        "Immich Directories:validate_immich_directories"
-        "Docker Compose File:validate_compose_file"
-        "Immich Containers:validate_immich_containers"
-        "Caddy Route:validate_caddy_route"
-        "DNS Record:validate_dns_record"
-        "HTTPS Access:validate_https_access"
-        "External Libraries:validate_external_libraries"
-        "Upload Writable:validate_upload_writable"
-        "Samba Upload Shares:validate_samba_upload_shares"
-        "Backup Script:validate_backup_script"
-        "Version Pinned:validate_version_pinned"
-        "Secrets Not Tracked:validate_secrets_not_tracked"
-        "Git Commit:validate_git_commit"
-    )
+    # PHASE4_CHECKS defined in validation-photo-management-utils.sh (single source of truth)
+    local checks=("${PHASE4_CHECKS[@]}")
 
     for check in "${checks[@]}"; do
         local name="${check%%:*}"

@@ -34,8 +34,6 @@ DRY_RUN=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_SCRIPT_SRC="${SCRIPT_DIR}/../../backup/backup-wiki-llm.sh"
 BACKUP_SCRIPT_DEST="/opt/homeserver/scripts/backup/backup-wiki-llm.sh"
-LOG_DIR="/var/log/homeserver"
-LOG_FILE="${LOG_DIR}/wiki-llm-backup.log"
 
 print_header "Task 5.12: Deploy Wiki + LLM Backup Script"
 
@@ -84,8 +82,6 @@ if [[ "$DRY_RUN" == true ]]; then
     print_info "[DRY-RUN] Would create directory: $(dirname "$BACKUP_SCRIPT_DEST")"
     print_info "[DRY-RUN] Would copy: $BACKUP_SCRIPT_SRC → $BACKUP_SCRIPT_DEST"
     print_info "[DRY-RUN] Would set permissions: 755 on $BACKUP_SCRIPT_DEST"
-    print_info "[DRY-RUN] Would create log directory: $LOG_DIR"
-    print_info "[DRY-RUN] Would create log file: $LOG_FILE"
 else
     # Create backup scripts directory
     mkdir -p "$(dirname "$BACKUP_SCRIPT_DEST")"
@@ -96,16 +92,6 @@ else
     fi
     chmod 755 "$BACKUP_SCRIPT_DEST"
     print_success "Installed $BACKUP_SCRIPT_DEST"
-
-    # Create log directory and file
-    mkdir -p "$LOG_DIR"
-    if [[ ! -f "$LOG_FILE" ]]; then
-        touch "$LOG_FILE"
-        chmod 644 "$LOG_FILE"
-        print_success "Created log file: $LOG_FILE"
-    else
-        print_info "Log file already exists: $LOG_FILE"
-    fi
 fi
 
 # ============================================================
@@ -164,13 +150,6 @@ else
         exit 1
     fi
 
-    if grep -q "rsync.*ollama-models" "$BACKUP_SCRIPT_DEST"; then
-        print_success "Script rsyncs Ollama models"
-    else
-        print_error "Script does not rsync Ollama models"
-        exit 1
-    fi
-
     # Verify email alert on failure
     if grep -q "send_alert_email" "$BACKUP_SCRIPT_DEST"; then
         print_success "Script sends email alerts on failure"
@@ -185,14 +164,12 @@ fi
 # ============================================================
 print_header "Deployment Summary"
 print_success "Backup script deployed: $BACKUP_SCRIPT_DEST"
-print_info "Log file: $LOG_FILE"
 print_info ""
 print_info "Usage:"
 print_info "  sudo $BACKUP_SCRIPT_DEST [--dry-run]"
 print_info "  Default destination: /mnt/backup/wiki-llm/"
 print_info ""
-print_info "Cron entry (add when DAS HDD is available):"
-print_info "  0 3 * * * root $BACKUP_SCRIPT_DEST >> $LOG_FILE 2>&1"
+print_info "Included in backup-all.sh orchestrator (no separate cron entry needed)"
 
 print_success "Task complete"
 exit 0

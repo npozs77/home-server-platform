@@ -207,26 +207,8 @@ validate_all() {
     export DATA_MOUNT INTERNAL_SUBDOMAIN SERVER_IP
     
     local total=0 passed=0
-    checks=(
-        "Data Structure:validate_data_structure"
-        "Family Directories:validate_family_subdirectories"
-        "Backup Directories:validate_backup_subdirectories"
-        "Compose Files:validate_services_yaml"
-        "Caddy Service:validate_caddy_service"
-        "Caddy HTTPS:validate_caddy_https"
-        "CA Certificate:validate_certificate_trust"
-        "Pi-hole Service:validate_dns_service"
-        "Pi-hole Web UI:validate_pihole_web_ui"
-        "DNS Resolution:validate_dns_resolution"
-        "External DNS:validate_external_dns"
-        "msmtp Service:validate_smtp_service"
-        "msmtp Test:validate_smtp_test"
-        "Netdata Service:validate_netdata_service"
-        "Netdata Dashboard:validate_netdata_dashboard"
-        "Logrotate Caddy:validate_logrotate_caddy"
-        "Logrotate Pi-hole:validate_logrotate_pihole"
-        "Logrotate msmtp:validate_logrotate_msmtp"
-    )
+    # PHASE2_CHECKS defined in validation-infrastructure-utils.sh (single source of truth)
+    checks=("${PHASE2_CHECKS[@]}")
     
     for check in "${checks[@]}"; do
         name="${check%%:*}"

@@ -195,7 +195,7 @@ test_ollama_compose_example() {
     print_pass "ollama.yml.example exists"
     grep -q "ollama/ollama" "$compose_file" && print_pass "Ollama image" || print_fail "Ollama image missing"
     grep -q "open-webui/open-webui" "$compose_file" && print_pass "Open WebUI image" || print_fail "Open WebUI image missing"
-    grep -q "ENABLE_SIGNUP.*false" "$compose_file" && print_pass "Self-registration disabled" || print_fail "Self-registration not disabled"
+    grep -q "ENABLE_SIGNUP" "$compose_file" && print_pass "ENABLE_SIGNUP configured" || print_fail "ENABLE_SIGNUP missing"
     grep -q "OLLAMA_BASE_URL.*ollama:11434" "$compose_file" && print_pass "Internal Ollama URL" || print_fail "Internal Ollama URL missing"
     grep -q "unless-stopped" "$compose_file" && print_pass "Restart policy set" || print_fail "Restart policy missing"
     grep -q "homeserver" "$compose_file" && print_pass "Homeserver network" || print_fail "Homeserver network missing"
@@ -224,6 +224,206 @@ test_validation_utils_size() {
 test_validation_utils_checks_array() {
     run_test "Validation utils defines PHASE5_CHECKS array"
     grep -q "PHASE5_CHECKS=" "$UTILS_FILE" && print_pass "PHASE5_CHECKS array defined" || print_fail "PHASE5_CHECKS array missing"
+}
+
+# --- Sub-phase A: Task Module Content Tests ---
+
+TASK_DIR="scripts/deploy/tasks"
+
+test_task_ph5_01_content() {
+    run_test "task-ph5-01 (Wiki directories) content validation"
+    local f="${TASK_DIR}/task-ph5-01-create-wiki-directories.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "postgres" && print_pass "References postgres directory" || print_fail "Missing postgres directory"
+    echo "$c" | grep -q "content" && print_pass "References content directory" || print_fail "Missing content directory"
+    echo "$c" | grep -q "mkdir -p" && print_pass "Uses mkdir -p (idempotent)" || print_fail "Missing mkdir -p"
+    echo "$c" | grep -q "chown\|chmod" && print_pass "Sets ownership/permissions" || print_fail "Missing chown/chmod"
+    echo "$c" | grep -q "all_exist\|already exist" && print_pass "Has idempotency guard" || print_fail "Missing idempotency guard"
+}
+
+test_task_ph5_02_content() {
+    run_test "task-ph5-02 (deploy Wiki stack) content validation"
+    local f="${TASK_DIR}/task-ph5-02-deploy-wiki-stack.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "wiki.yml" && print_pass "References wiki.yml compose file" || print_fail "Missing wiki.yml"
+    echo "$c" | grep -q "docker compose" && print_pass "Uses docker compose command" || print_fail "Missing docker compose"
+    echo "$c" | grep -q "ALL_HEALTHY\|ALL_RUNNING" && print_pass "Has health-wait loop" || print_fail "Missing health-wait loop"
+    echo "$c" | grep -q "wiki-db.*wiki-server\|WIKI_CONTAINERS" && print_pass "Checks both wiki containers" || print_fail "Missing container list"
+}
+
+test_task_ph5_03_content() {
+    run_test "task-ph5-03 (Caddy wiki) content validation"
+    local f="${TASK_DIR}/task-ph5-03-configure-wiki-caddy.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "WIKI_DOMAIN" && print_pass "References WIKI_DOMAIN" || print_fail "Missing WIKI_DOMAIN"
+    echo "$c" | grep -q "wiki-server" && print_pass "Routes to wiki-server container" || print_fail "Missing wiki-server upstream"
+    echo "$c" | grep -q "tls internal" && print_pass "Uses tls internal" || print_fail "Missing tls internal"
+    echo "$c" | grep -q "BACKUP_FILE\|backup" && print_pass "Has Caddyfile backup/rollback" || print_fail "Missing backup/rollback"
+}
+
+test_task_ph5_04_content() {
+    run_test "task-ph5-04 (DNS wiki) content validation"
+    local f="${TASK_DIR}/task-ph5-04-configure-wiki-dns.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "WIKI_DOMAIN" && print_pass "References WIKI_DOMAIN" || print_fail "Missing WIKI_DOMAIN"
+    echo "$c" | grep -q "SERVER_IP" && print_pass "References SERVER_IP" || print_fail "Missing SERVER_IP"
+    echo "$c" | grep -q "pihole-FTL.*dns.hosts\|dns\.hosts" && print_pass "Uses Pi-hole v6 dns.hosts pattern" || print_fail "Missing dns.hosts"
+    echo "$c" | grep -q "nslookup" && print_pass "Verifies DNS resolution" || print_fail "Missing DNS verification"
+}
+
+test_task_ph5_05_content() {
+    run_test "task-ph5-05 (provision Wiki users) content validation"
+    local f="${TASK_DIR}/task-ph5-05-provision-wiki-users.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "GraphQL\|graphql\|wiki_graphql" && print_pass "Uses GraphQL API" || print_fail "Missing GraphQL API"
+    echo "$c" | grep -q "WIKI_API_TOKEN" && print_pass "References WIKI_API_TOKEN" || print_fail "Missing WIKI_API_TOKEN"
+    echo "$c" | grep -q "Administrators\|Editors\|Readers" && print_pass "Maps roles to Wiki.js groups" || print_fail "Missing group mapping"
+    echo "$c" | grep -q "already exists\|EXISTING_USERS\|existing" && print_pass "Has idempotency check" || print_fail "Missing idempotency"
+}
+
+# --- Sub-phase B: Task Module Content Tests ---
+
+test_task_ph5_06_content() {
+    run_test "task-ph5-06 (LLM directories) content validation"
+    local f="${TASK_DIR}/task-ph5-06-create-ollama-directories.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "ollama/models" && print_pass "References ollama/models directory" || print_fail "Missing ollama/models directory"
+    echo "$c" | grep -q "openwebui/data" && print_pass "References openwebui/data directory" || print_fail "Missing openwebui/data directory"
+    echo "$c" | grep -q "mkdir -p" && print_pass "Uses mkdir -p (idempotent)" || print_fail "Missing mkdir -p"
+    echo "$c" | grep -q "chown\|chmod" && print_pass "Sets ownership/permissions" || print_fail "Missing chown/chmod"
+    echo "$c" | grep -q "all_exist\|already exist" && print_pass "Has idempotency guard" || print_fail "Missing idempotency guard"
+}
+
+test_task_ph5_07_content() {
+    run_test "task-ph5-07 (deploy LLM stack) content validation"
+    local f="${TASK_DIR}/task-ph5-07-deploy-llm-stack.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "ollama.yml" && print_pass "References ollama.yml compose file" || print_fail "Missing ollama.yml reference"
+    echo "$c" | grep -q "docker compose" && print_pass "Uses docker compose command" || print_fail "Missing docker compose"
+    echo "$c" | grep -q "ALL_HEALTHY\|ALL_RUNNING" && print_pass "Has health-wait loop" || print_fail "Missing health-wait loop"
+    echo "$c" | grep -q "ollama.*open-webui\|LLM_CONTAINERS" && print_pass "Checks both containers" || print_fail "Missing container list"
+    echo "$c" | grep -q "120" && print_pass "Has 120s timeout" || print_fail "Missing 120s timeout"
+}
+
+test_task_ph5_08_content() {
+    run_test "task-ph5-08 (pull models) content validation"
+    local f="${TASK_DIR}/task-ph5-08-pull-default-model.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "OLLAMA_DEFAULT_MODEL" && print_pass "References OLLAMA_DEFAULT_MODEL" || print_fail "Missing OLLAMA_DEFAULT_MODEL"
+    echo "$c" | grep -q "OLLAMA_ADDITIONAL_MODELS" && print_pass "References OLLAMA_ADDITIONAL_MODELS" || print_fail "Missing OLLAMA_ADDITIONAL_MODELS"
+    echo "$c" | grep -q "ollama pull" && print_pass "Uses ollama pull command" || print_fail "Missing ollama pull"
+    echo "$c" | grep -q "ollama list" && print_pass "Verifies with ollama list" || print_fail "Missing ollama list verification"
+    echo "$c" | grep -q "MODELS_SKIPPED\|already pulled\|skip" && print_pass "Has skip-if-exists logic" || print_fail "Missing skip logic"
+}
+
+test_task_ph5_09_content() {
+    run_test "task-ph5-09 (Caddy chat) content validation"
+    local f="${TASK_DIR}/task-ph5-09-configure-chat-caddy.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "OPENWEBUI_DOMAIN" && print_pass "References OPENWEBUI_DOMAIN" || print_fail "Missing OPENWEBUI_DOMAIN"
+    echo "$c" | grep -q "open-webui" && print_pass "Routes to open-webui container" || print_fail "Missing open-webui upstream"
+    echo "$c" | grep -q "tls internal" && print_pass "Uses tls internal" || print_fail "Missing tls internal"
+    echo "$c" | grep -q "Caddyfile" && print_pass "References Caddyfile" || print_fail "Missing Caddyfile reference"
+    echo "$c" | grep -q "BACKUP_FILE\|backup" && print_pass "Has Caddyfile backup/rollback" || print_fail "Missing backup/rollback"
+    echo "$c" | grep -q "grep.*OPENWEBUI_DOMAIN.*Caddyfile\|grep.*CADDYFILE" && print_pass "Checks idempotency before append" || print_fail "Missing idempotency check"
+}
+
+test_task_ph5_10_content() {
+    run_test "task-ph5-10 (DNS chat) content validation"
+    local f="${TASK_DIR}/task-ph5-10-configure-chat-dns.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "OPENWEBUI_DOMAIN" && print_pass "References OPENWEBUI_DOMAIN" || print_fail "Missing OPENWEBUI_DOMAIN"
+    echo "$c" | grep -q "SERVER_IP" && print_pass "References SERVER_IP" || print_fail "Missing SERVER_IP"
+    echo "$c" | grep -q "pihole-FTL.*dns.hosts\|dns\.hosts" && print_pass "Uses Pi-hole v6 dns.hosts pattern" || print_fail "Missing dns.hosts pattern"
+    echo "$c" | grep -q "nslookup" && print_pass "Verifies DNS resolution" || print_fail "Missing DNS verification"
+    echo "$c" | grep -q "OPENWEBUI_DOMAIN.*already\|already.*exist" && print_pass "Has idempotency check" || print_fail "Missing idempotency check"
+}
+
+test_task_ph5_11_content() {
+    run_test "task-ph5-11 (provision OpenWebUI users) content validation"
+    local f="${TASK_DIR}/task-ph5-11-provision-openwebui-users.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "auths/signup" && print_pass "Uses signup API for admin creation" || print_fail "Missing signup API"
+    echo "$c" | grep -q "auths/signin" && print_pass "Uses signin API for idempotency" || print_fail "Missing signin API"
+    echo "$c" | grep -q "auths/add" && print_pass "Uses admin add API for other users" || print_fail "Missing admin add API"
+    echo "$c" | grep -q "ADMIN_JWT\|admin_jwt\|JWT" && print_pass "Captures admin JWT for auth" || print_fail "Missing JWT capture"
+    echo "$c" | grep -q "ENABLE_SIGNUP.*false" && print_pass "Disables signup after provisioning" || print_fail "Missing signup disable"
+    echo "$c" | grep -q "python3.*json.dumps\|json.dumps" && print_pass "Has JSON password escaping" || print_fail "Missing JSON escaping"
+    echo "$c" | grep -q "already registered\|already exists\|EXISTING_EMAILS" && print_pass "Handles already-exists gracefully" || print_fail "Missing already-exists handling"
+}
+
+# --- Shared Components: Task Module Content Tests ---
+
+test_task_ph5_12_content() {
+    run_test "task-ph5-12 (deploy backup script) content validation"
+    local f="${TASK_DIR}/task-ph5-12-deploy-backup-script.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "backup-wiki-llm.sh" && print_pass "References backup-wiki-llm.sh" || print_fail "Missing backup-wiki-llm.sh reference"
+    echo "$c" | grep -q "pg_dump" && print_pass "Validates pg_dump usage in deployed script" || print_fail "Missing pg_dump validation"
+    echo "$c" | grep -q "rsync.*wiki-content" && print_pass "Validates rsync of wiki content" || print_fail "Missing wiki content rsync validation"
+    echo "$c" | grep -q "rsync.*openwebui-data" && print_pass "Validates rsync of Open WebUI data" || print_fail "Missing Open WebUI data rsync validation"
+    echo "$c" | grep -q "BACKUP_MOUNT\|/mnt/backup" && print_pass "References backup destination" || print_fail "Missing backup destination reference"
+    echo "$c" | grep -q "send_alert_email" && print_pass "Validates email alert" || print_fail "Missing email alert validation"
+    echo "$c" | grep -q "DRY_RUN\|dry-run" && print_pass "Has dry-run support" || print_fail "Missing dry-run support"
+}
+
+test_task_ph5_14_content() {
+    run_test "task-ph5-14 (deploy wiki-rag-sync) content validation"
+    local f="${TASK_DIR}/task-ph5-14-deploy-wiki-rag-sync.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "wiki-rag-sync.sh" && print_pass "References wiki-rag-sync.sh" || print_fail "Missing wiki-rag-sync.sh reference"
+    echo "$c" | grep -q "md5sum\|checksum" && print_pass "Validates checksum logic" || print_fail "Missing checksum validation"
+    echo "$c" | grep -qE "api/v1/files|api/v1/documents" && print_pass "Validates Open WebUI document API" || print_fail "Missing document API validation"
+    echo "$c" | grep -q "cron\|CRON" && print_pass "Configures cron schedule" || print_fail "Missing cron configuration"
+    echo "$c" | grep -q "OPENWEBUI_DOMAIN" && print_pass "References OPENWEBUI_DOMAIN" || print_fail "Missing OPENWEBUI_DOMAIN"
+    echo "$c" | grep -q "OPENWEBUI_API_TOKEN" && print_pass "References OPENWEBUI_API_TOKEN" || print_fail "Missing OPENWEBUI_API_TOKEN"
+    echo "$c" | grep -q "DRY_RUN\|dry-run" && print_pass "Has dry-run support" || print_fail "Missing dry-run support"
+}
+
+test_backup_script_content() {
+    run_test "backup-wiki-llm.sh content validation"
+    local f="scripts/backup/backup-wiki-llm.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    bash -n "$f" 2>/dev/null && print_pass "Valid bash syntax" || print_fail "Syntax errors"
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "set -euo pipefail" && print_pass "Has safety flags" || print_fail "Missing safety flags"
+    echo "$c" | grep -q "pg_dump" && print_pass "Uses pg_dump for database backup" || print_fail "Missing pg_dump"
+    echo "$c" | grep -q "WIKI_CONTENT_DIR\|wiki/content" && print_pass "Backs up wiki content" || print_fail "Missing wiki content backup"
+    echo "$c" | grep -q "OPENWEBUI_DATA_DIR\|openwebui/data" && print_pass "Backs up Open WebUI data" || print_fail "Missing Open WebUI data backup"
+    ! echo "$c" | grep -qE "rsync.*ollama|OLLAMA_MODELS_DIR" && print_pass "Excludes Ollama models (re-pullable)" || print_fail "Should not rsync Ollama models"
+    echo "$c" | grep -q "send_alert_email" && print_pass "Sends email alert on failure" || print_fail "Missing email alert"
+    echo "$c" | grep -q "TOTAL_FILES\|FILE_COUNT" && print_pass "Logs file count" || print_fail "Missing file count logging"
+    echo "$c" | grep -q "TOTAL_SIZE" && print_pass "Logs total size" || print_fail "Missing total size logging"
+    echo "$c" | grep -q "START_TIME\|DURATION" && print_pass "Logs timing" || print_fail "Missing timing logging"
+}
+
+test_wiki_rag_sync_content() {
+    run_test "wiki-rag-sync.sh content validation"
+    local f="scripts/operations/wiki-rag-sync.sh"
+    [[ -f "$f" ]] || { print_fail "File not found: $f"; return; }
+    bash -n "$f" 2>/dev/null && print_pass "Valid bash syntax" || print_fail "Syntax errors"
+    local c; c=$(cat "$f")
+    echo "$c" | grep -q "set -euo pipefail" && print_pass "Has safety flags" || print_fail "Missing safety flags"
+    echo "$c" | grep -q "md5sum" && print_pass "Uses md5sum for checksum comparison" || print_fail "Missing md5sum"
+    echo "$c" | grep -q "CHECKSUM_FILE\|wiki-rag-checksums" && print_pass "Tracks checksums" || print_fail "Missing checksum tracking"
+    echo "$c" | grep -qE "api/v1/files|api/v1/documents" && print_pass "Calls Open WebUI document API" || print_fail "Missing document API call"
+    echo "$c" | grep -q "OPENWEBUI_API_TOKEN" && print_pass "Uses OPENWEBUI_API_TOKEN" || print_fail "Missing API token usage"
+    echo "$c" | grep -q "WIKI_CONTENT_DIR\|wiki/content" && print_pass "Reads from wiki content dir" || print_fail "Missing wiki content dir"
+    echo "$c" | grep -q "UPLOADED\|uploaded" && print_pass "Tracks upload count" || print_fail "Missing upload tracking"
+    echo "$c" | grep -q "REMOVED\|removed\|deleted" && print_pass "Handles deleted pages" || print_fail "Missing deleted page handling"
 }
 
 # --- Main ---
@@ -260,6 +460,21 @@ main() {
     test_validation_utils_syntax || true
     test_validation_utils_size || true
     test_validation_utils_checks_array || true
+    test_task_ph5_01_content || true
+    test_task_ph5_02_content || true
+    test_task_ph5_03_content || true
+    test_task_ph5_04_content || true
+    test_task_ph5_05_content || true
+    test_task_ph5_06_content || true
+    test_task_ph5_07_content || true
+    test_task_ph5_08_content || true
+    test_task_ph5_09_content || true
+    test_task_ph5_10_content || true
+    test_task_ph5_11_content || true
+    test_task_ph5_12_content || true
+    test_task_ph5_14_content || true
+    test_backup_script_content || true
+    test_wiki_rag_sync_content || true
 
     echo ""
     echo "========================================"

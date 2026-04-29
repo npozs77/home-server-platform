@@ -78,6 +78,9 @@ get_user_email() {
 }
 
 # Get password for a user (from secrets.env or generate new)
+# NOTE: Passwords are one-time-use for initial account creation only.
+# Users change their password on first login via Immich UI.
+# The env file values are never used again after provisioning.
 get_user_password() {
     local username="$1"
     local var_name="IMMICH_PASSWORD_${username}"
@@ -258,6 +261,16 @@ fi
 if [[ $failed -gt 0 ]]; then
     print_error "Some users failed to provision"
     exit 1
+fi
+
+if [[ "$DRY_RUN" == false && $created -gt 0 ]]; then
+    echo ""
+    print_info "Post-provisioning steps:"
+    print_info "  1. Users will be asked to change password on first login (expected)"
+    print_info "     Passwords in secrets.env are one-time-use — safe to remove after provisioning"
+    print_info "  2. To share external libraries with all users, enable Partner Sharing:"
+    print_info "     Admin → Account Settings → Partner Sharing → Add each family member"
+    print_info "     Each family member does the same to share their timeline with admin"
 fi
 
 print_success "Task complete"
