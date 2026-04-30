@@ -10,7 +10,7 @@
 !*.yml.example
 
 # Backup files
-*.backup
+*.backup*
 *.bak
 *~
 
@@ -35,6 +35,7 @@ configs/caddy/data/
 configs/caddy/config/
 configs/pihole/*.conf
 configs/pihole/*.list
+configs/samba/smb.conf
 configs/pihole/etc-pihole/
 configs/pihole/etc-dnsmasq.d/
 configs/netdata/

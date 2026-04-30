@@ -19,3 +19,13 @@
     notifempty
     copytruncate
 }
+
+/var/log/homeserver/watchdog.log {
+    weekly
+    rotate 4
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
