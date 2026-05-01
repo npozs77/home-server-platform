@@ -70,16 +70,40 @@ docker run -d \
     netdata/netdata:latest
 
 print_success "Netdata container deployed"
-sleep 5
+sleep 10
 
-if docker ps | grep -q netdata; then
-    print_success "Netdata is running"
-    print_info "Access at http://localhost:19999"
-else
+if ! docker ps | grep -q netdata; then
     print_error "Netdata failed to start"
     docker logs netdata
     exit 1
 fi
 
+print_success "Netdata is running"
+
+# Export live config to bind-mount so configs are persisted on host
+# Netdata starts with compiled-in defaults at /usr/lib/netdata/conf.d/
+# The bind-mount at /etc/netdata is initially empty — export the running
+# config and notification settings so they survive container recreation
+# and get captured by the overnight rsync backup.
+print_info "Exporting live Netdata config to host bind-mount..."
+
+# Export the running netdata.conf (full config with all defaults)
+docker exec netdata curl -s -o /etc/netdata/netdata.conf http://localhost:19999/netdata.conf
+if [[ -s /opt/homeserver/configs/netdata/netdata.conf ]]; then
+    print_success "Exported netdata.conf"
+else
+    print_warning "netdata.conf export may have failed — check manually"
+fi
+
+# Export health alarm notification config (needed for email alerting)
+docker cp netdata:/usr/lib/netdata/conf.d/health_alarm_notify.conf \
+    /opt/homeserver/configs/netdata/health_alarm_notify.conf
+if [[ -s /opt/homeserver/configs/netdata/health_alarm_notify.conf ]]; then
+    print_success "Exported health_alarm_notify.conf"
+else
+    print_warning "health_alarm_notify.conf export may have failed — check manually"
+fi
+
+print_info "Access at http://localhost:19999"
 print_success "Task complete"
 exit 0
