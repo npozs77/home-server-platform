@@ -68,7 +68,7 @@ done
 echo ""
 echo "--- Property 6: Mirror strip list ---"
 
-PRIVATE_ONLY_PATHS=(".kiro/" "input/" ".gitleaks.toml")
+PRIVATE_ONLY_PATHS=(".kiro/" "input/" ".gitleaks.toml" ".github/")
 
 TESTS_RUN=$((TESTS_RUN + 1))
 if [[ ! -f "$MIRROR_YML" ]]; then
