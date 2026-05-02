@@ -13,3 +13,6 @@
 
 # Daily watchdog at 06:00 (verifies backup success + health check freshness)
 0 6 * * * root /opt/homeserver/scripts/operations/monitoring/watchdog.sh >> /var/log/homeserver/watchdog.log 2>&1
+
+# Daily drift check at 08:00 (detects server divergence from origin)
+0 8 * * * root /opt/homeserver/scripts/operations/monitoring/check-drift.sh >> /var/log/homeserver/drift-check.log 2>&1

@@ -288,5 +288,10 @@ main_menu() {
     done
 }
 
+# Non-blocking drift check (skip silently if script not yet deployed)
+if [[ -x /opt/homeserver/scripts/operations/monitoring/check-drift.sh ]]; then
+    bash /opt/homeserver/scripts/operations/monitoring/check-drift.sh --warn-only || true
+fi
+
 # Entry point
 main_menu
