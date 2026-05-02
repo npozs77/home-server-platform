@@ -27,7 +27,7 @@ WARNINGS=""
 
 add_warning() {
     local msg="$1"
-    WARNINGS="${WARNINGS}${msg}\n"
+    WARNINGS="${WARNINGS}${msg}"$'\n'
     DRIFT_FOUND=true
     if $WARN_ONLY; then
         log_msg "WARN" "$SCRIPT_NAME" "$msg"
@@ -60,13 +60,15 @@ fi
 # Check 3: Local modifications
 if ! git diff --quiet 2>/dev/null; then
     MODIFIED=$(git diff --name-only 2>/dev/null | head -20)
-    add_warning "Local modifications detected (breaks git pull model):\n${MODIFIED}"
+    MODIFIED_ONELINE=$(echo "$MODIFIED" | tr '\n' ', ' | sed 's/,$//')
+    add_warning "Local modifications detected (breaks git pull model): ${MODIFIED_ONELINE}"
 fi
 
 # Check 4: Untracked files in scripts/ and configs/
 UNTRACKED=$(git ls-files --others --exclude-standard -- scripts/ configs/ 2>/dev/null || true)
 if [[ -n "$UNTRACKED" ]]; then
-    add_warning "Untracked files in tracked directories:\n${UNTRACKED}"
+    UNTRACKED_ONELINE=$(echo "$UNTRACKED" | tr '\n' ', ' | sed 's/,$//')
+    add_warning "Untracked files in tracked directories: ${UNTRACKED_ONELINE}"
 fi
 
 # Check 5: Detached HEAD
