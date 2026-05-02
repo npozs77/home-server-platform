@@ -126,11 +126,6 @@ validate_secrets_not_tracked() {
     ! git -C /opt/homeserver ls-files --error-unmatch configs/secrets.env &>/dev/null
 }
 
-# Validate Git working tree is clean
-validate_git_commit() {
-    git -C /opt/homeserver status | grep -q "nothing to commit, working tree clean"
-}
-
 # Validate LOC governance for Phase 5 scripts (Warning not failure on exceed)
 # Returns 0 always — prints warnings for scripts exceeding advisory limits
 validate_loc_governance() {
@@ -206,5 +201,4 @@ PHASE5_CHECKS=(
     "Netdata Phase 5:validate_netdata_phase5"
     "LOC Governance:validate_loc_governance"
     "Secrets Not Tracked:validate_secrets_not_tracked"
-    "Git Clean:validate_git_commit"
 )

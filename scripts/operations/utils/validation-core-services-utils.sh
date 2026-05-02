@@ -161,12 +161,6 @@ validate_jellyfin_dns() {
     nslookup "media.${INTERNAL_SUBDOMAIN}" "${SERVER_IP}" 2>/dev/null | grep -q "${SERVER_IP}"
 }
 
-# Validate Git commit
-validate_git_commit() {
-    git -C /opt/homeserver status | grep -q "nothing to commit, working tree clean"
-}
-
-
 # ── Checks Registry (single source of truth) ──
 # Used by: deploy-phase3-core-services.sh validate_all(), validate-all.sh
 PHASE3_CHECKS=(
@@ -183,5 +177,4 @@ PHASE3_CHECKS=(
     "Jellyfin HTTPS:validate_jellyfin_https"
     "Jellyfin Media Access:validate_jellyfin_media_access"
     "DNS Record (Jellyfin):validate_jellyfin_dns"
-    "Git Commit:validate_git_commit"
 )

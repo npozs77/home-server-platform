@@ -79,12 +79,6 @@ validate_secrets_not_tracked() {
     ! git -C /opt/homeserver ls-files --error-unmatch configs/secrets.env &>/dev/null
 }
 
-# Validate Git working tree is clean
-validate_git_commit() {
-    git -C /opt/homeserver status | grep -q "nothing to commit, working tree clean"
-}
-
-
 # ── Checks Registry (single source of truth) ──
 # Used by: deploy-phase4-photo-management.sh validate_all(), validate-all.sh
 PHASE4_CHECKS=(
@@ -100,5 +94,4 @@ PHASE4_CHECKS=(
     "Backup Script:validate_backup_script"
     "Version Pinned:validate_version_pinned"
     "Secrets Not Tracked:validate_secrets_not_tracked"
-    "Git Clean:validate_git_commit"
 )

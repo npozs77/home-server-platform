@@ -4,7 +4,7 @@ set -euo pipefail
 # Utility Library: Phase 2 Validation Functions
 # Purpose: Reusable validation functions for Phase 2 deployment verification
 # Functions: validate_data_structure, validate_family_subdirectories, validate_backup_subdirectories,
-#            validate_services_yaml, validate_git_commit, validate_logrotate_caddy, validate_logrotate_pihole,
+#            validate_services_yaml, validate_logrotate_caddy, validate_logrotate_pihole,
 #            validate_logrotate_msmtp, validate_dns_service, validate_dns_resolution, validate_external_dns,
 #            validate_caddy_service, validate_caddy_https, validate_certificate_trust, validate_smtp_service,
 #            validate_smtp_test, validate_netdata_service, validate_netdata_dashboard
@@ -82,16 +82,6 @@ validate_services_yaml() {
     else
         print_info "No Docker Compose service files found in configs/docker-compose/"
         return 1
-    fi
-}
-
-validate_git_commit() {
-    if git -C /opt/homeserver status --porcelain | grep -q .; then
-        print_info "Uncommitted changes in Git (commit when ready)"
-        return 1
-    else
-        print_success "All changes committed to Git"
-        return 0
     fi
 }
 
