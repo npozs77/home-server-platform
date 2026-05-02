@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Data Persistence Round-Trip (Property 9)
 # Purpose: Verify that docker compose down followed by docker compose up -d
 #          preserves all stateful data (volume mounts configured correctly)

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Inspection Module Independence (Property 14)
 # Purpose: Verify each inspection module is self-contained and can run
 #          independently without depending on prior module execution or

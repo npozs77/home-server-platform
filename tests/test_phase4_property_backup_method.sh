@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Database Backup Method (Property 8)
 # Purpose: Verify backup script calls pg_dump (not cp/rsync on postgres dir);
 #          verify pg_dump exit code is checked;

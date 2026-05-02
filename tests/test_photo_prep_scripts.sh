@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Test Suite: Photo Prep (Archive Inspection) Scripts
 # Purpose: Validate photo audit orchestrator and module scripts
 # Requirements: 43.1, 43.3, 52.1, 53.1-53.8

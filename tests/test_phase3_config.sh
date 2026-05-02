@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI_SAFE=true
 # Unit Tests: Phase 3 Configuration Initialization
 # Tests deployment script configuration management
 

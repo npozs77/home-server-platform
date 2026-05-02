@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Container Dependency Order (Property 3)
 # Purpose: Parse depends_on declarations from wiki.yml and ollama.yml; verify
 #          wiki-server depends_on wiki-db with service_healthy;

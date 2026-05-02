@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Test Suite: Backup & Alerting Scripts
 # Purpose: Property tests and unit tests for backup-alerting feature
 # Usage: bash tests/test_backup_alerting.sh

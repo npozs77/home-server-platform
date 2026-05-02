@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Test Suite: Phase 3 Core Services Scripts
 # Purpose: Validate Phase 3 deployment script and task modules
 # Requirements: 28.1, 28.2, 28.3, 28.4, 28.5, 28.6

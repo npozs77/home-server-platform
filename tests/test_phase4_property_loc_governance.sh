@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Script LOC Governance (Property 10)
 # Purpose: For each Phase 4 script, count LOC and verify Warning (not failure)
 #          when exceeding indicative limit (300/150/200)

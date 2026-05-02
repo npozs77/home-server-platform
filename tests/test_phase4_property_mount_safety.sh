@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: External Library Mount Safety (Property 2)
 # Purpose: Parse volume mounts from immich.yml for external library paths;
 #          verify :ro flag present; verify group_add contains media GID

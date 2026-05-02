@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: User Photo Isolation (Property 7)
 # Purpose: Verify Immich user model enforces per-user upload library isolation;
 #          verify admin role does not grant automatic access to other users' photos

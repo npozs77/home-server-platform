@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Test Suite: Phase 4 Photo Management Scripts
 # Purpose: Validate Phase 4 deployment script structure and conventions
 # Requirements: 31.1, 31.2, 31.3, 31.4, 31.5, 31.6, 31.7

@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI_SAFE=true
 set -uo pipefail
 
 # Unit Tests: validate-all.sh (E2E Validation Script)

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Docker Compose Configuration Invariants (Property 1)
 # Purpose: Parse all service definitions from immich.yml; for each service verify:
 #          restart policy unless-stopped, homeserver network, HEALTHCHECK directive, resource limits

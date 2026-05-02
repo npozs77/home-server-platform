@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Ollama API Internal-Only Access (Property 2)
 # Purpose: Parse ollama service definition from ollama.yml; verify no ports:
 #          directive publishes 11434 to host. Ollama API must only be accessible
