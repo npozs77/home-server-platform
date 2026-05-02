@@ -47,12 +47,4 @@ configs/docker-compose/*.yml
 # Service persistent data (managed by Docker, not Git)
 configs/docker-compose/*/data/
 configs/docker-compose/*/config/
-
-# PII-sensitive config (contains real domain/usernames for gitleaks scanning)
-.gitleaks.toml
-
-# Old PoC files + Input Documentation (such as concepts, ideas)
-OLD/
-input/
-.kiro/hooks/
 ``
