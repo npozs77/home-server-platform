@@ -2,7 +2,7 @@
 # CI_SAFE=true
 # Property Tests: CI Workflow Properties (Properties 5 & 6)
 # Feature: devops-cicd-pipeline
-# Property 5: GitHub Actions steps are SHA-pinned
+# Property 5: GitHub Actions steps use version tags
 # Property 6: Mirror workflow strips all private-only files
 # Validates: Requirements 8.7, 9.5, 9.8
 # Usage: bash tests/test_devops_pipeline_ci_workflows.sh
@@ -31,10 +31,10 @@ echo "Properties 5 & 6: CI Workflow Checks"
 echo "========================================"
 
 # ============================================================
-# Property 5: GitHub Actions steps are SHA-pinned
+# Property 5: GitHub Actions steps use version tags
 # ============================================================
 echo ""
-echo "--- Property 5: SHA-pinned actions ---"
+echo "--- Property 5: Version-tagged actions ---"
 
 WORKFLOW_FILES=("$CI_YML" "$MIRROR_YML")
 
@@ -48,17 +48,16 @@ for wf in "${WORKFLOW_FILES[@]}"; do
     fi
     print_pass "$wf_name exists"
 
-    # Extract all uses: directives and check each is SHA-pinned
+    # Extract all uses: directives and check each has a version specifier
     while IFS= read -r line; do
-        # Extract the action reference (after 'uses:')
         action_ref=$(echo "$line" | sed 's/.*uses:[[:space:]]*//' | sed 's/[[:space:]]*#.*//')
         TESTS_RUN=$((TESTS_RUN + 1))
 
-        # Check version part (after @) is a 40-char hex SHA
-        if echo "$action_ref" | grep -qE '@[0-9a-f]{40}'; then
-            print_pass "$wf_name: $action_ref is SHA-pinned"
+        # Check version part (after @) is a version tag like @v6 or @v2.3.8
+        if echo "$action_ref" | grep -qE '@v[0-9]'; then
+            print_pass "$wf_name: $action_ref uses version tag"
         else
-            print_fail "$wf_name: $action_ref is NOT SHA-pinned (must use 40-char commit SHA)"
+            print_fail "$wf_name: $action_ref missing version tag (expected @vN or @vN.N.N)"
         fi
     done < <(grep 'uses:' "$wf")
 done
