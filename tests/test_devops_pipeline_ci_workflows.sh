@@ -78,10 +78,10 @@ else
 
     for path in "${PRIVATE_ONLY_PATHS[@]}"; do
         TESTS_RUN=$((TESTS_RUN + 1))
-        if grep -q "git rm.*${path}" "$MIRROR_YML"; then
-            print_pass "Mirror strips $path via git rm"
+        if grep -q "git rm.*${path}\|--path ${path}" "$MIRROR_YML"; then
+            print_pass "Mirror strips $path"
         else
-            print_fail "Mirror does NOT strip $path — missing git rm command"
+            print_fail "Mirror does NOT strip $path"
         fi
     done
 fi
