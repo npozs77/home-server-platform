@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI_SAFE=true
 # Unit Tests: Phase 4 Immich User Provisioning Task Module
 # Purpose: Validate provisioning script structure, conventions, and logic
 # Requirements: 42.1-42.11

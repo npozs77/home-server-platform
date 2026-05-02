@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Backup Method — pg_dump Only (Property 11)
 # Purpose: Verify backup script calls pg_dump (not cp/rsync on postgres dir);
 #          verify pg_dump exit code is checked; verify rsync of wiki/content,

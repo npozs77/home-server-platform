@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI_SAFE=true
 # Property Test: Provisioning Idempotency and Email Strategy (Property 12)
 # Purpose: Verify universal correctness properties of the provisioning script
 # Validates: Requirements 42.3, 42.4, 42.6, 42.7, 42.8

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Data Persistence Round-Trip (Property 4)
 # Purpose: Verify all Phase 5 volume mounts configured correctly in Docker
 #          Compose files. Bind-mount host paths under /mnt/data/ ensure that

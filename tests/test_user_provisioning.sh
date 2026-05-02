@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI_SAFE=true
 # Unit Tests: User Provisioning Scripts
 # Tests the actual user provisioning scripts in scripts/operations/user-management/
 

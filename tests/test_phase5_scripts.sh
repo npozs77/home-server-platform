@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Test Suite: Phase 5 Wiki + LLM Platform Scripts
 # Purpose: Validate Phase 5 deployment script structure and conventions
 # Requirements: 17.1-17.10, 18.2, 18.3

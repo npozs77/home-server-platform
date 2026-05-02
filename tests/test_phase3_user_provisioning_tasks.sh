@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI_SAFE=true
 # Unit Tests: Phase 3 User Provisioning Task Modules
 # Tests task modules for provisioning admin, power, and standard users
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Archive Inspection Read-Only Safety (Property 13)
 # Purpose: Verify that photo_audit.sh and its modules never modify, create,
 #          or delete files in the archive directory.

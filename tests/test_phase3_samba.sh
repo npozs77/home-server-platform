@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI_SAFE=true
 # Unit Tests: Phase 3 Samba Tasks
 # Tests task modules for Samba configuration, deployment, and verification
 

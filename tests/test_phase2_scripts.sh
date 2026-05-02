@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property-Based Tests for Phase 02 Scripts
 # Purpose: Validate infrastructure deployment scripts
 # Test framework: Bash-based property testing

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Version Pinning - No :latest (Property 3)
 # Purpose: Parse all image references from immich.yml; verify no image uses :latest tag;
 #          verify Immich images use ${IMMICH_VERSION}; verify non-Immich images have specific version tags

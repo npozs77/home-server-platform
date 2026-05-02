@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Deployment Script Idempotency (Property 14)
 # Purpose: Verify each Phase 5 task module implements idempotency guards so that
 #          running the same task twice with the same configuration does not create

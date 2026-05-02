@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Samba Ownership Inheritance (Property 5)
 # Purpose: Verify Media share has force group = media;
 #          verify Family share has force group = family;

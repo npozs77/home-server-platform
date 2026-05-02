@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Deployment Script Modular Architecture (Property 13)
 # Purpose: Verify orchestration script delegates to task-ph5-*.sh modules;
 #          verify each task is a separate file in scripts/deploy/tasks/

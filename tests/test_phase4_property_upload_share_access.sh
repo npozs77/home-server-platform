@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Upload Share Access Control (Property 4)
 # Purpose: For each per-user upload share config, verify:
 #          read only = yes, valid users = owner only

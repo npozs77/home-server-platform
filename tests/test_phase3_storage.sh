@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI_SAFE=true
 # Unit Tests: Phase 3 Data Storage Tasks
 # Tests task modules for media and Jellyfin directory creation
 

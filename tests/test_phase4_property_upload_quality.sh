@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: Photo Upload Quality Preservation (Property 11)
 # Purpose: Verify Immich stores original files without re-encoding;
 #          verify standard file copy (Samba) preserves EXIF metadata

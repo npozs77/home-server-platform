@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI_SAFE=true
 # Property Test: External Library Scan Non-Destructiveness (Property 6)
 # Purpose: Verify external library volume mounts are :ro;
 #          verify Immich configuration does not allow write operations to external library paths

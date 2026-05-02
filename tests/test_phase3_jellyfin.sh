@@ -1,4 +1,5 @@
 #!/bin/bash
+# CI_SAFE=true
 # Unit Tests: Phase 3 Jellyfin Tasks
 # Tests task modules for Jellyfin Docker Compose, deployment, Caddy config, and DNS config
 
