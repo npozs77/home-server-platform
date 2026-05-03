@@ -72,6 +72,40 @@ for script_rel in "${SCRIPTS[@]}"; do
         print_fail "${script_name}: fails bash -n syntax check"
     fi
 
+    # Check 4: deploy-update.sh branch argument support
+    if [[ "$script_name" == "deploy-update.sh" ]]; then
+        TESTS_RUN=$((TESTS_RUN + 1))
+        if grep -q 'BRANCH=.*\${1:-main}' "$script_path"; then
+            print_pass "${script_name}: accepts optional branch argument (default: main)"
+        else
+            print_fail "${script_name}: missing optional branch argument support"
+        fi
+
+        TESTS_RUN=$((TESTS_RUN + 1))
+        if grep -q 'git pull origin.*\${BRANCH}' "$script_path"; then
+            print_pass "${script_name}: uses BRANCH variable in git pull"
+        else
+            print_fail "${script_name}: git pull does not use BRANCH variable"
+        fi
+    fi
+
+    # Check 4: check-drift.sh branch-aware comparison
+    if [[ "$script_name" == "check-drift.sh" ]]; then
+        TESTS_RUN=$((TESTS_RUN + 1))
+        if grep -q 'symbolic-ref.*HEAD' "$script_path"; then
+            print_pass "${script_name}: detects current branch via symbolic-ref"
+        else
+            print_fail "${script_name}: missing current branch detection"
+        fi
+
+        TESTS_RUN=$((TESTS_RUN + 1))
+        if grep -q 'origin/\${CURRENT_BRANCH}' "$script_path"; then
+            print_pass "${script_name}: compares against origin/{current branch}"
+        else
+            print_fail "${script_name}: not comparing against current branch origin"
+        fi
+    fi
+
     echo ""
 done
 

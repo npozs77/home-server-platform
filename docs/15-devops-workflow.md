@@ -88,7 +88,8 @@ bash scripts/operations/utils/deploy-update.sh main
 
 ### Notes
 
-- The server repo may end up on a detached HEAD or non-main branch — the drift check will flag this, which is expected during testing
+- Drift check is branch-aware: it compares against `origin/{current branch}`, not always `origin/main`
+- A soft warning is included when the server is not on main (reminder to switch back when done)
 - Always return to main after testing: `deploy-update.sh main`
 - The branch must exist on the remote (push before pulling on server)
 
@@ -96,10 +97,11 @@ bash scripts/operations/utils/deploy-update.sh main
 
 The drift check script (`scripts/operations/monitoring/check-drift.sh`) detects when the server diverges from the repo:
 
-- **Commits behind** — server hasn't pulled latest changes
+- **Commits behind** — server hasn't pulled latest changes from `origin/{current branch}`
+- **Non-main branch** — soft warning reminding to return to main when done
 - **Local modifications** — files edited directly on server
 - **Untracked files** — new files in `scripts/` or `configs/` not in repo
-- **Detached HEAD** — server not on `main` branch
+- **Detached HEAD** — server not on any named branch
 
 ### Modes
 

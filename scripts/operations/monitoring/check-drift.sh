@@ -49,11 +49,17 @@ if ! git fetch origin 2>/dev/null; then
     FETCH_OK=false
 fi
 
-# Check 2: Commits behind origin/main
-if $FETCH_OK; then
-    BEHIND=$(git rev-list HEAD..origin/main --count 2>/dev/null || echo "0")
-    if [[ "$BEHIND" -gt 0 ]]; then
-        add_warning "Server is ${BEHIND} commit(s) behind origin/main — run: git pull origin main"
+# Check 2: Commits behind origin/{current branch}
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
+if $FETCH_OK && [[ -n "$CURRENT_BRANCH" ]]; then
+    if git rev-parse "origin/${CURRENT_BRANCH}" &>/dev/null; then
+        BEHIND=$(git rev-list "HEAD..origin/${CURRENT_BRANCH}" --count 2>/dev/null || echo "0")
+        if [[ "$BEHIND" -gt 0 ]]; then
+            add_warning "Server is ${BEHIND} commit(s) behind origin/${CURRENT_BRANCH} — run: deploy-update.sh ${CURRENT_BRANCH}"
+        fi
+    fi
+    if [[ "$CURRENT_BRANCH" != "main" ]]; then
+        add_warning "Server is on branch '${CURRENT_BRANCH}' (not main) — return to main when done: deploy-update.sh main"
     fi
 fi
 
