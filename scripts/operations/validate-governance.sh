@@ -58,10 +58,13 @@ print_info() {
 
 count_loc() {
     local file="$1"
-    # Count non-empty, non-comment lines (avoid pipefail race with grep -c)
+    # Count non-empty, non-comment lines
+    # Avoid pipeline to prevent pipefail race conditions in CI
     local content
     content=$(grep -v '^\s*#' "$file" || true)
-    echo "$content" | grep -c -v '^\s*$' || echo "0"
+    local count
+    count=$(echo "$content" | grep -c -v '^\s*$') || count=0
+    echo "$count"
 }
 
 check_script_size() {

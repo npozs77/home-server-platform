@@ -5,7 +5,7 @@ set -euo pipefail
 # Purpose: Run all phase validations in a single pass (regression, health check, alerting-ready)
 # Usage: sudo ./validate-all.sh [--phase N] [--json] [--quiet]
 # Options:
-#   --phase N   Run only phase N (1-4), omit for all phases
+#   --phase N   Run only phase N (1-5), omit for all phases
 #   --json      Output results as JSON (for future alerting integration)
 #   --quiet     Only print summary (suppress per-check detail)
 # Exit codes: 0 = all pass, 1 = failures detected, 2 = config/setup error
@@ -42,7 +42,7 @@ for arg in "$@"; do
 done
 
 # Check root
-[[ $EUID -ne 0 ]] && { print_error "Must run as root (use sudo)"; exit 2; }
+if [[ $EUID -ne 0 ]]; then print_error "Must run as root (use sudo)"; exit 2; fi
 
 # Load all config files
 load_env_files || { print_error "No config files found in /opt/homeserver/configs/"; exit 2; }
@@ -58,12 +58,15 @@ export INTERNAL_SUBDOMAIN="${INTERNAL_SUBDOMAIN:-}"
 export DOMAIN="${DOMAIN:-}"
 export IMMICH_DOMAIN="${IMMICH_DOMAIN:-}"
 export IMMICH_VERSION="${IMMICH_VERSION:-}"
+export WIKI_DOMAIN="${WIKI_DOMAIN:-}"
+export OPENWEBUI_DOMAIN="${OPENWEBUI_DOMAIN:-}"
 
 # Source validation libraries (each defines PHASEN_CHECKS array + functions)
 source "${UTILS_DIR}/validation-foundation-utils.sh"       # → PHASE1_CHECKS
 source "${UTILS_DIR}/validation-infrastructure-utils.sh"    # → PHASE2_CHECKS
 source "${UTILS_DIR}/validation-core-services-utils.sh"     # → PHASE3_CHECKS
 source "${UTILS_DIR}/validation-photo-management-utils.sh"  # → PHASE4_CHECKS
+source "${UTILS_DIR}/validation-wiki-llm-utils.sh"         # → PHASE5_CHECKS
 
 # Counters
 GRAND_TOTAL=0
@@ -78,12 +81,12 @@ run_check() {
     local phase="$1" name="$2" func="$3"
     GRAND_TOTAL=$((GRAND_TOTAL + 1))
 
-    [[ "$QUIET" == false ]] && printf "  %-35s " "$name"
+    [[ "$QUIET" == false ]] && printf "  %-35s " "$name" || true
 
     if $func > /tmp/validate_all_output 2>&1; then
         GRAND_PASSED=$((GRAND_PASSED + 1))
-        [[ "$QUIET" == false ]] && echo -e "\033[0;32m✓ PASS\033[0m"
-        [[ "$JSON_OUTPUT" == true ]] && JSON_ENTRIES+=("{\"phase\":$phase,\"check\":\"$name\",\"status\":\"pass\"}")
+        if [[ "$QUIET" == false ]]; then echo -e "\033[0;32m✓ PASS\033[0m"; fi
+        if [[ "$JSON_OUTPUT" == true ]]; then JSON_ENTRIES+=("{\"phase\":$phase,\"check\":\"$name\",\"status\":\"pass\"}"); fi
     else
         GRAND_FAILED=$((GRAND_FAILED + 1))
         if [[ "$QUIET" == false ]]; then
@@ -105,7 +108,7 @@ run_phase() {
     local checks=("$@")
     local phase_total=${#checks[@]}
 
-    [[ "$QUIET" == false ]] && echo "" && echo -e "\033[0;34m── Phase $phase_num: $phase_name ($phase_total checks) ──\033[0m"
+    if [[ "$QUIET" == false ]]; then echo "" && echo -e "\033[0;34m── Phase $phase_num: $phase_name ($phase_total checks) ──\033[0m"; fi
 
     local before=$GRAND_PASSED
     for check in "${checks[@]}"; do
@@ -115,12 +118,13 @@ run_phase() {
 }
 
 # ── Execute ──
-[[ "$QUIET" == false ]] && print_header "Home Server E2E Validation" && echo "Timestamp: $TIMESTAMP" && echo "Server:    ${SERVER_IP:-unknown}"
+if [[ "$QUIET" == false ]]; then print_header "Home Server E2E Validation" && echo "Timestamp: $TIMESTAMP" && echo "Server:    ${SERVER_IP:-unknown}"; fi
 
-[[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "1" ]] && run_phase 1 "Foundation"        "${PHASE1_CHECKS[@]}"
-[[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "2" ]] && run_phase 2 "Infrastructure"    "${PHASE2_CHECKS[@]}"
-[[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "3" ]] && run_phase 3 "Core Services"     "${PHASE3_CHECKS[@]}"
-[[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "4" ]] && run_phase 4 "Photo Management"  "${PHASE4_CHECKS[@]}"
+if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "1" ]]; then run_phase 1 "Foundation"        "${PHASE1_CHECKS[@]}"; fi
+if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "2" ]]; then run_phase 2 "Infrastructure"    "${PHASE2_CHECKS[@]}"; fi
+if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "3" ]]; then run_phase 3 "Core Services"     "${PHASE3_CHECKS[@]}"; fi
+if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "4" ]]; then run_phase 4 "Photo Management"  "${PHASE4_CHECKS[@]}"; fi
+if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "5" ]]; then run_phase 5 "Wiki & LLM"       "${PHASE5_CHECKS[@]}"; fi
 
 # ── Summary ──
 echo ""
@@ -152,7 +156,7 @@ if [[ "$JSON_OUTPUT" == true ]]; then
     echo "  \"checks\": ["
     first=true
     for entry in "${JSON_ENTRIES[@]}"; do
-        [[ "$first" == true ]] && echo "    $entry" && first=false || echo "    ,$entry"
+        if [[ "$first" == true ]]; then echo "    $entry"; first=false; else echo "    ,$entry"; fi
     done
     echo "  ]"
     echo "}"
