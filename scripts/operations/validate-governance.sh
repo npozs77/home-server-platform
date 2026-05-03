@@ -59,7 +59,7 @@ print_info() {
 count_loc() {
     local file="$1"
     # Count non-empty, non-comment lines
-    grep -v '^\s*#' "$file" | grep -v '^\s*$' | wc -l
+    grep -v '^\s*#' "$file" | grep -c -v '^\s*$'
 }
 
 check_script_size() {
@@ -72,7 +72,8 @@ check_script_size() {
         return 0  # Don't exit early, continue validation
     fi
     
-    local loc=$(count_loc "$file")
+    local loc
+    loc=$(count_loc "$file")
     
     if [[ $loc -le $limit ]]; then
         print_pass "$description: $loc LOC (limit: $limit)"
@@ -127,7 +128,8 @@ check_test_exists() {
     local description="$2"
     
     # Extract base name without extension
-    local basename=$(basename "$file" .sh)
+    local basename
+    basename=$(basename "$file" .sh)
     
     # Look for test file in tests/ directory
     local test_file="${REPO_ROOT}/tests/test_${basename}.sh"
@@ -135,7 +137,8 @@ check_test_exists() {
     # For task modules, look for phase-specific test files
     if [[ "$file" == *"/tasks/task-ph"* ]]; then
         # Extract phase number (ph1, ph2, etc.)
-        local phase=$(echo "$basename" | grep -o 'ph[0-9]*')
+        local phase
+        phase=$(echo "$basename" | grep -o 'ph[0-9]*')
         test_file="${REPO_ROOT}/tests/test_${phase}_scripts.sh"
     fi
     
@@ -166,12 +169,13 @@ main() {
     
     for script in "${REPO_ROOT}/scripts/deploy/deploy-phase"*.sh; do
         if [[ -f "$script" ]]; then
-            local basename=$(basename "$script")
-            check_script_size "$script" "$DEPLOYMENT_SCRIPT_LIMIT" "$basename" || true
-            check_bash_syntax "$script" "$basename" || true
-            check_shebang "$script" "$basename" || true
-            check_safety_flags "$script" "$basename" || true
-            check_test_exists "$script" "$basename" || true
+            local bname
+            bname=$(basename "$script")
+            check_script_size "$script" "$DEPLOYMENT_SCRIPT_LIMIT" "$bname" || true
+            check_bash_syntax "$script" "$bname" || true
+            check_shebang "$script" "$bname" || true
+            check_safety_flags "$script" "$bname" || true
+            check_test_exists "$script" "$bname" || true
         fi
     done
     echo ""
@@ -181,12 +185,13 @@ main() {
     
     for task in "${REPO_ROOT}/scripts/deploy/tasks/task-ph"*.sh; do
         if [[ -f "$task" ]]; then
-            local basename=$(basename "$task")
-            check_script_size "$task" "$TASK_MODULE_LIMIT" "$basename" || true
-            check_bash_syntax "$task" "$basename" || true
-            check_shebang "$task" "$basename" || true
-            check_safety_flags "$task" "$basename" || true
-            check_test_exists "$task" "$basename" || true
+            local tname
+            tname=$(basename "$task")
+            check_script_size "$task" "$TASK_MODULE_LIMIT" "$tname" || true
+            check_bash_syntax "$task" "$tname" || true
+            check_shebang "$task" "$tname" || true
+            check_safety_flags "$task" "$tname" || true
+            check_test_exists "$task" "$tname" || true
         fi
     done
     echo ""
@@ -196,12 +201,13 @@ main() {
     
     for util in "${REPO_ROOT}/scripts/operations/utils/"*.sh; do
         if [[ -f "$util" ]] && [[ $(basename "$util") != "README.md" ]]; then
-            local basename=$(basename "$util")
-            check_script_size "$util" "$UTILITY_LIBRARY_LIMIT" "$basename" || true
-            check_bash_syntax "$util" "$basename" || true
-            check_shebang "$util" "$basename" || true
-            check_safety_flags "$util" "$basename" || true
-            check_test_exists "$util" "$basename" || true
+            local uname
+            uname=$(basename "$util")
+            check_script_size "$util" "$UTILITY_LIBRARY_LIMIT" "$uname" || true
+            check_bash_syntax "$util" "$uname" || true
+            check_shebang "$util" "$uname" || true
+            check_safety_flags "$util" "$uname" || true
+            check_test_exists "$util" "$uname" || true
         fi
     done
     echo ""

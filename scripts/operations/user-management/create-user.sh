@@ -248,7 +248,7 @@ echo "  Role: $ROLE"
 echo "  Groups: $(groups "$USERNAME" | cut -d: -f2)"
 echo "  Home Directory: /home/$USERNAME"
 echo "  Personal Folder: $PERSONAL_DIR"
-echo "  Samba Share: \\\\192.168.1.2\\$USERNAME"
+printf '  Samba Share: \\\\192.168.1.2\\%s\n' "$USERNAME"
 echo "  SSH Access: $SSH_STATUS"
 echo ""
 

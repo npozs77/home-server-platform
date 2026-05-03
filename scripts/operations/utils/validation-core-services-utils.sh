@@ -25,11 +25,14 @@ validate_personal_folders() {
 validate_family_folders() {
     # Check all subdirectories in /mnt/data/family/
     local all_valid=true
-    for dir in ${DATA_MOUNT}/family/*/; do
+    for dir in "${DATA_MOUNT}"/family/*/; do
         if [[ -d "$dir" ]]; then
-            local owner=$(stat -c "%U" "$dir")
-            local group=$(stat -c "%G" "$dir")
-            local perms=$(stat -c "%a" "$dir")
+            local owner
+            owner=$(stat -c "%U" "$dir")
+            local group
+            group=$(stat -c "%G" "$dir")
+            local perms
+            perms=$(stat -c "%a" "$dir")
             
             # Family folders should be root:family with setgid bit (2770 or 2775)
             if [[ "$owner" != "root" ]] || [[ "$group" != "family" ]]; then
@@ -52,11 +55,14 @@ validate_family_folders() {
 validate_media_folders() {
     # Check all subdirectories in /mnt/data/media/
     local all_valid=true
-    for dir in ${DATA_MOUNT}/media/*/; do
+    for dir in "${DATA_MOUNT}"/media/*/; do
         if [[ -d "$dir" ]]; then
-            local owner=$(stat -c "%U" "$dir")
-            local group=$(stat -c "%G" "$dir")
-            local perms=$(stat -c "%a" "$dir")
+            local owner
+            owner=$(stat -c "%U" "$dir")
+            local group
+            group=$(stat -c "%G" "$dir")
+            local perms
+            perms=$(stat -c "%a" "$dir")
             
             if [[ "$owner" != "media" ]] || [[ "$group" != "media" ]] || [[ "$perms" != "2775" ]]; then
                 echo "ERROR: $dir has incorrect ownership/permissions ($owner:$group, $perms)"
@@ -112,7 +118,8 @@ validate_jellyfin_container() {
     fi
     
     # Check health status
-    local health_status=$(docker inspect jellyfin --format='{{.State.Health.Status}}' 2>/dev/null || echo "no healthcheck")
+    local health_status
+    health_status=$(docker inspect jellyfin --format='{{.State.Health.Status}}' 2>/dev/null || echo "no healthcheck")
     if [[ "$health_status" == "healthy" ]]; then
         echo "OK: Jellyfin is healthy"
     elif [[ "$health_status" == "starting" ]]; then
@@ -124,13 +131,15 @@ validate_jellyfin_container() {
     fi
     
     # Check container has media group access
-    local media_gid=$(getent group media | cut -d: -f3)
+    local media_gid
+    media_gid=$(getent group media | cut -d: -f3)
     if [[ -z "$media_gid" ]]; then
         echo "ERROR: media group does not exist"
         return 1
     fi
     
-    local container_groups=$(docker exec jellyfin id -G 2>/dev/null)
+    local container_groups
+    container_groups=$(docker exec jellyfin id -G 2>/dev/null)
     if [[ ! "$container_groups" =~ $media_gid ]]; then
         echo "ERROR: Jellyfin container missing media group access (GID $media_gid)"
         return 1
