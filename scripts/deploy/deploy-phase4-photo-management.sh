@@ -21,15 +21,16 @@ SECRETS_CONFIG="/opt/homeserver/configs/secrets.env"
 
 # Dry-run mode
 DRY_RUN=false
-[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true && echo "Running in DRY-RUN mode" && echo ""
+DRY_RUN_ARG=""
+if [[ "${1:-}" == "--dry-run" ]]; then DRY_RUN=true; DRY_RUN_ARG="--dry-run"; echo "Running in DRY-RUN mode"; echo ""; fi
 
 # Check if running as root
 [[ $EUID -ne 0 ]] && { print_error "This script must be run as root (use sudo)"; exit 1; }
 
 # Load configuration from foundation.env, services.env, secrets.env
 load_config() {
-    [[ -f "$FOUNDATION_CONFIG" ]] && source "$FOUNDATION_CONFIG" || { print_error "Foundation config missing: $FOUNDATION_CONFIG"; return 1; }
-    [[ -f "$SERVICES_CONFIG" ]] && source "$SERVICES_CONFIG" || { print_error "Services config missing: $SERVICES_CONFIG"; return 1; }
+    if [[ -f "$FOUNDATION_CONFIG" ]]; then source "$FOUNDATION_CONFIG"; else print_error "Foundation config missing: $FOUNDATION_CONFIG"; return 1; fi
+    if [[ -f "$SERVICES_CONFIG" ]]; then source "$SERVICES_CONFIG"; else print_error "Services config missing: $SERVICES_CONFIG"; return 1; fi
     # Source secrets safely (passwords may contain $ ! ` and other shell-special chars)
     # Use grep+eval with single-quote wrapping to prevent expansion
     if [[ -f "$SECRETS_CONFIG" ]]; then
@@ -92,28 +93,28 @@ init_config() {
     fi
 
     print_info "Immich Configuration"
-    read -p "Immich version [${IMMICH_VERSION:-v2.5.6}]: " input
+    read -rp "Immich version [${IMMICH_VERSION:-v2.5.6}]: " input
     IMMICH_VERSION="${input:-${IMMICH_VERSION:-v2.5.6}}"
 
-    read -p "Immich domain [${IMMICH_DOMAIN:-photos.${INTERNAL_SUBDOMAIN:-home.mydomain.com}}]: " input
+    read -rp "Immich domain [${IMMICH_DOMAIN:-photos.${INTERNAL_SUBDOMAIN:-home.mydomain.com}}]: " input
     IMMICH_DOMAIN="${input:-${IMMICH_DOMAIN:-photos.${INTERNAL_SUBDOMAIN:-home.mydomain.com}}}"
 
-    read -p "Immich internal port [${IMMICH_PORT:-2283}]: " input
+    read -rp "Immich internal port [${IMMICH_PORT:-2283}]: " input
     IMMICH_PORT="${input:-${IMMICH_PORT:-2283}}"
 
-    read -p "Media group GID [${MEDIA_GROUP_GID:-${detected_gid:-1002}}]: " input
+    read -rp "Media group GID [${MEDIA_GROUP_GID:-${detected_gid:-1002}}]: " input
     MEDIA_GROUP_GID="${input:-${MEDIA_GROUP_GID:-${detected_gid:-1002}}}"
 
-    read -p "Upload location [${UPLOAD_LOCATION:-/mnt/data/services/immich/upload}]: " input
+    read -rp "Upload location [${UPLOAD_LOCATION:-/mnt/data/services/immich/upload}]: " input
     UPLOAD_LOCATION="${input:-${UPLOAD_LOCATION:-/mnt/data/services/immich/upload}}"
 
-    read -p "DB data location [${DB_DATA_LOCATION:-/mnt/data/services/immich/postgres}]: " input
+    read -rp "DB data location [${DB_DATA_LOCATION:-/mnt/data/services/immich/postgres}]: " input
     DB_DATA_LOCATION="${input:-${DB_DATA_LOCATION:-/mnt/data/services/immich/postgres}}"
 
-    read -p "DB username [${DB_USERNAME:-postgres}]: " input
+    read -rp "DB username [${DB_USERNAME:-postgres}]: " input
     DB_USERNAME="${input:-${DB_USERNAME:-postgres}}"
 
-    read -p "DB database name [${DB_DATABASE_NAME:-immich}]: " input
+    read -rp "DB database name [${DB_DATABASE_NAME:-immich}]: " input
     DB_DATABASE_NAME="${input:-${DB_DATABASE_NAME:-immich}}"
 
     echo ""
@@ -141,16 +142,16 @@ validate_config() {
     validate_required_vars "IMMICH_VERSION" "IMMICH_DOMAIN" "IMMICH_PORT" "MEDIA_GROUP_GID" "UPLOAD_LOCATION" "DB_DATA_LOCATION" "DB_USERNAME" "DB_DATABASE_NAME" || status=1
 
     # Validate version format (vN.N.N)
-    [[ "$IMMICH_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && print_success "Immich version valid: $IMMICH_VERSION" || { print_error "Immich version invalid (expected vN.N.N): $IMMICH_VERSION"; status=1; }
+    if [[ "$IMMICH_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then print_success "Immich version valid: $IMMICH_VERSION"; else print_error "Immich version invalid (expected vN.N.N): $IMMICH_VERSION"; status=1; fi
 
     # Validate domain
-    validate_domain "$IMMICH_DOMAIN" && print_success "Immich domain valid: $IMMICH_DOMAIN" || status=1
+    if validate_domain "$IMMICH_DOMAIN"; then print_success "Immich domain valid: $IMMICH_DOMAIN"; else status=1; fi
 
     # Validate port
-    [[ "$IMMICH_PORT" =~ ^[0-9]+$ ]] && print_success "Immich port valid: $IMMICH_PORT" || { print_error "Immich port invalid: $IMMICH_PORT"; status=1; }
+    if [[ "$IMMICH_PORT" =~ ^[0-9]+$ ]]; then print_success "Immich port valid: $IMMICH_PORT"; else print_error "Immich port invalid: $IMMICH_PORT"; status=1; fi
 
     # Validate GID
-    [[ "$MEDIA_GROUP_GID" =~ ^[0-9]+$ ]] && print_success "Media group GID valid: $MEDIA_GROUP_GID" || { print_error "Media group GID invalid: $MEDIA_GROUP_GID"; status=1; }
+    if [[ "$MEDIA_GROUP_GID" =~ ^[0-9]+$ ]]; then print_success "Media group GID valid: $MEDIA_GROUP_GID"; else print_error "Media group GID invalid: $MEDIA_GROUP_GID"; status=1; fi
 
     # Check secrets (consistent with Phase 3 pattern: check non-empty only)
     if [[ -n "${DB_PASSWORD:-}" ]]; then
@@ -160,48 +161,48 @@ validate_config() {
     fi
 
     echo ""
-    [[ $status -eq 0 ]] && { print_success "All configuration checks passed!"; return 0; } || { print_error "Some checks failed"; return 1; }
+    if [[ $status -eq 0 ]]; then print_success "All configuration checks passed!"; return 0; else print_error "Some checks failed"; return 1; fi
 }
 
 # Task execution functions (delegate to task modules)
 execute_task_4_1() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export DATA_MOUNT MEDIA_GROUP_GID UPLOAD_LOCATION DB_DATA_LOCATION
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-01-create-immich-directories.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-01-create-immich-directories.sh ${DRY_RUN_ARG}
 }
 
 execute_task_4_2() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export DATA_MOUNT IMMICH_VERSION DB_PASSWORD TIMEZONE MEDIA_GROUP_GID UPLOAD_LOCATION DB_DATA_LOCATION DB_USERNAME DB_DATABASE_NAME
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-02-deploy-immich-stack.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-02-deploy-immich-stack.sh ${DRY_RUN_ARG}
 }
 
 execute_task_4_3() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export IMMICH_DOMAIN IMMICH_PORT INTERNAL_SUBDOMAIN DOMAIN
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-03-configure-caddy.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-03-configure-caddy.sh ${DRY_RUN_ARG}
 }
 
 execute_task_4_4() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export SERVER_IP IMMICH_DOMAIN
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-04-configure-dns.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-04-configure-dns.sh ${DRY_RUN_ARG}
 }
 
 execute_task_4_5() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export ADMIN_USER ADMIN_EMAIL
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-05-provision-immich-users.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-05-provision-immich-users.sh ${DRY_RUN_ARG}
 }
 
 execute_task_4_6() {
     load_config || { print_error "Configuration not loaded"; return 1; }
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-06-configure-samba-uploads.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-06-configure-samba-uploads.sh ${DRY_RUN_ARG}
 }
 
 execute_task_4_7() {
     load_config || { print_error "Configuration not loaded"; return 1; }
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-07-deploy-backup-script.sh $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    bash /opt/homeserver/scripts/deploy/tasks/task-ph4-07-deploy-backup-script.sh ${DRY_RUN_ARG}
 }
 
 # Validate all Phase 4 checks
@@ -233,7 +234,7 @@ validate_all() {
     echo "========================================"
     echo "Results: $passed/$total checks passed"
     echo "========================================"
-    [[ $passed -eq $total ]] && { print_success "All checks passed!"; return 0; } || { print_error "Some checks failed"; return 1; }
+    if [[ $passed -eq $total ]]; then print_success "All checks passed!"; return 0; else print_error "Some checks failed"; return 1; fi
 }
 
 # Validate prerequisites (Phase 1-3 complete)
@@ -245,18 +246,18 @@ validate_prerequisites() {
     local status=0
 
     # Phase 1: Foundation
-    [[ -d "${DATA_MOUNT:-/mnt/data}" ]] && print_success "Data mount exists" || { print_error "Data mount missing"; status=1; }
+    if [[ -d "${DATA_MOUNT:-/mnt/data}" ]]; then print_success "Data mount exists"; else print_error "Data mount missing"; status=1; fi
 
     # Phase 2: Infrastructure (check key containers)
-    command -v docker &>/dev/null && print_success "Docker installed" || { print_error "Docker not installed"; status=1; }
+    if command -v docker &>/dev/null; then print_success "Docker installed"; else print_error "Docker not installed"; status=1; fi
 
     # Phase 3: Core Services
-    [[ -d "${DATA_MOUNT:-/mnt/data}/media/Photos" ]] && print_success "Media Photos directory exists" || { print_error "Media Photos directory missing"; status=1; }
-    [[ -d "${DATA_MOUNT:-/mnt/data}/family/Photos" ]] && print_success "Family Photos directory exists" || { print_error "Family Photos directory missing"; status=1; }
-    getent group media &>/dev/null && print_success "media group exists" || { print_error "media group missing"; status=1; }
+    if [[ -d "${DATA_MOUNT:-/mnt/data}/media/Photos" ]]; then print_success "Media Photos directory exists"; else print_error "Media Photos directory missing"; status=1; fi
+    if [[ -d "${DATA_MOUNT:-/mnt/data}/family/Photos" ]]; then print_success "Family Photos directory exists"; else print_error "Family Photos directory missing"; status=1; fi
+    if getent group media &>/dev/null; then print_success "media group exists"; else print_error "media group missing"; status=1; fi
 
     echo ""
-    [[ $status -eq 0 ]] && { print_success "All prerequisites met!"; return 0; } || { print_error "Prerequisites not met"; return 1; }
+    if [[ $status -eq 0 ]]; then print_success "All prerequisites met!"; return 0; else print_error "Prerequisites not met"; return 1; fi
 }
 
 # Interactive menu
@@ -282,7 +283,7 @@ main_menu() {
         echo "v. Validate all"
         echo "q. Quit"
         echo ""
-        read -p "Select option: " option
+        read -rp "Select option: " option
         echo ""
 
         case $option in
@@ -302,7 +303,7 @@ main_menu() {
         esac
 
         echo ""
-        read -p "Press Enter to continue..."
+        read -rp "Press Enter to continue..."
     done
 }
 
