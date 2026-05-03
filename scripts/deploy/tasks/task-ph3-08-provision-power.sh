@@ -52,7 +52,9 @@ source "$SECRETS_ENV"
 set -u
 
 # Export all SAMBA_PASSWORD_* variables so create-user.sh can access them
-export $(grep "^SAMBA_PASSWORD_" "$SECRETS_ENV" | cut -d= -f1)
+while IFS='=' read -r varname _; do
+    export "${varname?}"
+done < <(grep "^SAMBA_PASSWORD_" "$SECRETS_ENV")
 
 # Execute task
 if [[ "$DRY_RUN" == true ]]; then

@@ -84,9 +84,11 @@ fi
 if grep -q "^${OPENWEBUI_DOMAIN}" "$CADDYFILE"; then
     print_success "Open WebUI entry already exists in Caddyfile — skipping"
     print_info "Reloading Caddy..."
-    docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null && \
-        print_success "Caddy reloaded" || \
+    if docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null; then
+        print_success "Caddy reloaded"
+    else
         print_info "Caddy reload failed — check Caddy logs"
+    fi
     exit 0
 fi
 

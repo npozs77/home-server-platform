@@ -52,9 +52,7 @@ if [[ "$DRY_RUN" == true ]]; then
 fi
 
 print_info "Sending test email to $ADMIN_EMAIL..."
-sudo -u "$ADMIN_USER" bash -c "echo -e 'Subject: Home Server Test Email\n\nThis is a test email from your home server.\nIf you receive this, msmtp is configured correctly.' | msmtp '$ADMIN_EMAIL'"
-
-if [[ $? -eq 0 ]]; then
+if sudo -u "$ADMIN_USER" bash -c "echo -e 'Subject: Home Server Test Email\n\nThis is a test email from your home server.\nIf you receive this, msmtp is configured correctly.' | msmtp '$ADMIN_EMAIL'"; then
     print_success "Test email sent successfully"
     print_info "Check $ADMIN_EMAIL for the test message"
 else
