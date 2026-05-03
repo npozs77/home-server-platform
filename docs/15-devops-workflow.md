@@ -85,3 +85,21 @@ git clone git@github.com:<user>/<private-repo>.git
 ```
 
 All scripts, specs, docs, and operational context are in one place. No manual file syncing.
+
+## Local Branch Protection
+
+Git hooks block direct commits and pushes to `main`, enforcing a feature-branch workflow.
+
+Install hooks (run once per clone):
+
+```bash
+bash scripts/operations/utils/install-git-hooks.sh
+```
+
+This installs:
+- `pre-commit`: blocks commits on `main`
+- `pre-push`: blocks pushes to `main`
+
+Workflow: create a feature branch, commit there, push, open a PR. CI validates before merge.
+
+Bypass when needed: `git commit --no-verify` or `git push --no-verify`
