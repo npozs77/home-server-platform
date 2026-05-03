@@ -120,7 +120,7 @@ else
     echo ""
     echo "Samba is accessible from client devices:"
     echo ""
-    echo "  Windows:  \\\\192.168.1.2"
+    printf '  Windows:  \\\\192.168.1.2\n'
     echo "  macOS:    smb://192.168.1.2"
     echo "  Linux:    smb://192.168.1.2"
     echo ""

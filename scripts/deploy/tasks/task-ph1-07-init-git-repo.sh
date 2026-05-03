@@ -141,7 +141,6 @@ fi
 # Install gitleaks for PII/secret scanning
 if ! command -v gitleaks &>/dev/null; then
     print_info "Installing gitleaks..."
-    local arch
     arch=$(uname -m)
     [[ "$arch" == "x86_64" ]] && arch="x64" || arch="arm64"
     curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_${arch}.tar.gz" | tar xz -C /usr/local/bin gitleaks
@@ -153,7 +152,6 @@ fi
 
 # Set up pre-commit hook (non-interactive, PII values from foundation.env)
 if [[ -f /opt/homeserver/scripts/setup-hooks.sh ]]; then
-    local domain username gituser
     domain=$(grep "^DOMAIN=" /opt/homeserver/configs/services.env 2>/dev/null | cut -d'"' -f2 || echo "")
     username=$(grep "^ADMIN_USER=" /opt/homeserver/configs/foundation.env 2>/dev/null | cut -d'"' -f2 || echo "")
     gituser=$(grep "^GIT_USER_NAME=" /opt/homeserver/configs/foundation.env 2>/dev/null | cut -d'"' -f2 || echo "")

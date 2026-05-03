@@ -141,9 +141,9 @@ run_module() {
     fi
     if [[ ! -x "$module_path" ]]; then
         # Try running via bash if not executable
-        bash "$module_path" "$ARCHIVE_DIR" $REPORT_FLAG
+        bash "$module_path" "$ARCHIVE_DIR" "$REPORT_FLAG"
     else
-        "$module_path" "$ARCHIVE_DIR" $REPORT_FLAG
+        "$module_path" "$ARCHIVE_DIR" "$REPORT_FLAG"
     fi
 }
 

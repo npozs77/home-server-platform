@@ -92,7 +92,7 @@ else
     print_info "Adding Jellyfin DNS record to custom.list..."
     
     # Backup custom.list
-    cp /opt/homeserver/configs/pihole/custom.list /opt/homeserver/configs/pihole/custom.list.backup.$(date +%Y%m%d_%H%M%S)
+    cp /opt/homeserver/configs/pihole/custom.list "/opt/homeserver/configs/pihole/custom.list.backup.$(date +%Y%m%d_%H%M%S)"
     
     # Add Jellyfin DNS record
     echo "${SERVER_IP} ${JELLYFIN_DOMAIN}" >> /opt/homeserver/configs/pihole/custom.list
@@ -110,7 +110,7 @@ else
     else
         print_error "Failed to reload Pi-hole DNS"
         print_error "Restoring backup..."
-        mv /opt/homeserver/configs/pihole/custom.list.backup.$(date +%Y%m%d_%H%M%S) /opt/homeserver/configs/pihole/custom.list
+        mv "/opt/homeserver/configs/pihole/custom.list.backup.$(date +%Y%m%d_%H%M%S)" /opt/homeserver/configs/pihole/custom.list
         docker cp /opt/homeserver/configs/pihole/custom.list pihole:/etc/pihole/custom.list
         docker exec pihole pihole reloaddns
         exit 1
@@ -120,8 +120,8 @@ else
     print_info "Verifying DNS resolution..."
     sleep 2  # Wait for DNS to propagate
     
-    if nslookup ${JELLYFIN_DOMAIN} 127.0.0.1 &> /dev/null; then
-        RESOLVED_IP=$(nslookup ${JELLYFIN_DOMAIN} 127.0.0.1 | grep -A1 "Name:" | grep "Address:" | awk '{print $2}')
+    if nslookup "${JELLYFIN_DOMAIN}" 127.0.0.1 &> /dev/null; then
+        RESOLVED_IP=$(nslookup "${JELLYFIN_DOMAIN}" 127.0.0.1 | grep -A1 "Name:" | grep "Address:" | awk '{print $2}')
         if [[ "$RESOLVED_IP" == "$SERVER_IP" ]]; then
             print_success "DNS resolution verified: ${JELLYFIN_DOMAIN} -> ${SERVER_IP}"
         else

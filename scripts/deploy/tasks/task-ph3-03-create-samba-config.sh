@@ -48,7 +48,7 @@ fi
 if [[ -f /opt/homeserver/configs/samba/smb.conf ]]; then
     echo "smb.conf already exists"
     if [[ "$DRY_RUN" == false ]]; then
-        read -p "Overwrite? (y/n): " confirm
+        read -rp "Overwrite? (y/n): " confirm
         if [[ "$confirm" != "y" ]]; then
             echo "Skipping Samba configuration creation"
             exit 0
