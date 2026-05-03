@@ -24,6 +24,9 @@ readonly _SO_ERR_VALIDATION=4 _SO_ERR_CONFLICT=5
 # Read a single field from a service definition; returns empty string if missing
 _so_field() { yq -r ".services.${1}.${2} // \"\"" "$SERVICES_CONFIG"; }
 
+# Read enabled field (yq's // treats false as falsy, so we handle it in bash)
+_so_enabled() { local v; v=$(yq -r ".services.${1}.enabled" "$SERVICES_CONFIG"); [[ "$v" == "null" || -z "$v" ]] && echo "true" || echo "$v"; }
+
 # Verify a service exists in services.yml
 read_service_definition() {
     local svc="$1"
@@ -42,7 +45,7 @@ validate_service_definition() {
     local no_proxy=$(yq -r ".services.${svc}.no_proxy // false" "$SERVICES_CONFIG")
     local name=$(_so_field "$svc" "name")
     local vis=$(_so_field "$svc" "visibility")
-    local enabled=$(yq -r ".services.${svc}.enabled // true" "$SERVICES_CONFIG")
+    local enabled=$(_so_enabled "$svc")
 
     # Name format: lowercase alphanumeric + hyphens
     if [[ ! "$svc" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
@@ -346,7 +349,7 @@ cmd_add() {
     [[ -z "$svc" ]] && { print_error "Usage: docker-service-helper.sh add <service-name> [--dry-run]"; return "$_SO_ERR_USAGE"; }
     _so_log "ADD ${svc}: Starting"
     read_service_definition "$svc"
-    local enabled=$(yq -r ".services.${svc}.enabled // true" "$SERVICES_CONFIG")
+    local enabled=$(_so_enabled "$svc")
     if [[ "$enabled" == "false" ]]; then
         print_info "Service '${svc}' is disabled (enabled: false) — skipping"; return 0
     fi
@@ -471,7 +474,7 @@ cmd_list() {
         echo "["
         local first=true
         while IFS= read -r svc; do
-            local enabled=$(yq -r ".services.${svc}.enabled // true" "$SERVICES_CONFIG")
+            local enabled=$(_so_enabled "$svc")
             local status="not deployed"
             if [[ "$enabled" == "false" ]]; then status="disabled"
             elif docker inspect -f '{{.State.Running}}' "$svc" 2>/dev/null | grep -q true; then status="running"
@@ -489,7 +492,7 @@ cmd_list() {
         printf "%-20s %-35s %-15s %-10s\n" "NAME" "IMAGE" "SUBDOMAIN" "STATUS"
         printf "%-20s %-35s %-15s %-10s\n" "----" "-----" "---------" "------"
         while IFS= read -r svc; do
-            local enabled=$(yq -r ".services.${svc}.enabled // true" "$SERVICES_CONFIG")
+            local enabled=$(_so_enabled "$svc")
             local status="not deployed"
             if [[ "$enabled" == "false" ]]; then status="disabled"
             elif docker inspect -f '{{.State.Running}}' "$svc" 2>/dev/null | grep -q true; then status="running"
@@ -507,7 +510,7 @@ cmd_validate() {
     local svc="${1:-}"
     [[ -z "$svc" ]] && { print_error "Usage: docker-service-helper.sh validate <service-name>"; return "$_SO_ERR_USAGE"; }
     read_service_definition "$svc"
-    local enabled=$(yq -r ".services.${svc}.enabled // true" "$SERVICES_CONFIG")
+    local enabled=$(_so_enabled "$svc")
     if [[ "$enabled" == "false" ]]; then
         print_info "Service '${svc}' is disabled (enabled: false) — skipping validation"; return 0
     fi

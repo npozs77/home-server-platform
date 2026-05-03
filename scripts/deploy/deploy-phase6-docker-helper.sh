@@ -40,37 +40,30 @@ load_config() {
     return 0
 }
 
+HELPER="/opt/homeserver/scripts/docker-helper/docker-service-helper.sh"
+
 # Task execution functions
-execute_task_6_1() {
+execute_install_yq() {
     bash /opt/homeserver/scripts/deploy/tasks/task-ph6-01-install-yq.sh ${DRY_RUN_ARG}
 }
 
-execute_task_6_2() {
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph6-02-deploy-helper-scripts.sh ${DRY_RUN_ARG}
-}
-
-execute_task_6_3() {
+execute_create_services_yml() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     bash /opt/homeserver/scripts/deploy/tasks/task-ph6-03-add-helper-services-yaml.sh ${DRY_RUN_ARG}
 }
 
-execute_task_6_4() {
+execute_deploy_example() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     bash /opt/homeserver/scripts/deploy/tasks/task-ph6-04-deploy-example-service.sh ${DRY_RUN_ARG}
 }
 
-execute_task_6_7() {
-    bash /opt/homeserver/scripts/deploy/tasks/task-ph6-07-git-commit.sh ${DRY_RUN_ARG}
-}
-
-# Validate all Phase 6 checks
+# Validate Phase 6 deployment
 validate_all() {
     print_header "Phase 06 Docker Service Helper Validation"
     echo ""
 
     load_config || { print_error "Configuration not loaded"; return 1; }
 
-    # Source validation utils (defines PHASE6_CHECKS)
     source /opt/homeserver/scripts/operations/utils/validation-docker-helper-utils.sh
 
     local total=0 passed=0
@@ -122,11 +115,9 @@ main_menu() {
         echo ""
         echo "p. Validate prerequisites (Phase 1-5)"
         echo ""
-        echo "6.1. Install yq YAML processor"
-        echo "6.2. Deploy helper scripts"
-        echo "6.3. Create services.yml from example"
-        echo "6.4. Deploy example service"
-        echo "6.7. Git commit Phase 6 artifacts"
+        echo "1. Install yq YAML processor"
+        echo "2. Create services.yml from example"
+        echo "3. Deploy example service"
         echo ""
         echo "v. Validate all"
         echo "q. Quit"
@@ -136,11 +127,9 @@ main_menu() {
 
         case $option in
             p) validate_prerequisites ;;
-            6.1) execute_task_6_1 ;;
-            6.2) execute_task_6_2 ;;
-            6.3) execute_task_6_3 ;;
-            6.4) execute_task_6_4 ;;
-            6.7) execute_task_6_7 ;;
+            1) execute_install_yq ;;
+            2) execute_create_services_yml ;;
+            3) execute_deploy_example ;;
             v) validate_all ;;
             q) echo "Exiting..."; exit 0 ;;
             *) print_error "Invalid option" ;;

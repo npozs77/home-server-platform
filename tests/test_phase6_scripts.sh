@@ -102,7 +102,7 @@ test_deploy_functions() {
     for fn in load_config validate_all validate_prerequisites main_menu; do
         grep -q "${fn}()" "$DEPLOY_SCRIPT" && print_pass "${fn}() exists" || print_fail "${fn}() missing"
     done
-    for task in execute_task_6_1 execute_task_6_2 execute_task_6_3 execute_task_6_4 execute_task_6_7; do
+    for task in execute_install_yq execute_create_services_yml execute_deploy_example; do
         grep -q "${task}()" "$DEPLOY_SCRIPT" && print_pass "${task}() exists" || print_fail "${task}() missing"
     done
 }
@@ -144,7 +144,7 @@ test_dispatcher_default_usage() {
 
 test_task_modules_exist() {
     run_test "Phase 6 task modules exist"
-    for t in 01 02 03 04 06 07; do
+    for t in 01 03 04; do
         local f="scripts/deploy/tasks/task-ph6-${t}-*.sh"
         # shellcheck disable=SC2086
         ls $f >/dev/null 2>&1 && print_pass "task-ph6-${t} exists" || print_fail "task-ph6-${t} missing"
