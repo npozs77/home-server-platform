@@ -61,6 +61,37 @@ The server uses `git pull` instead of SCP for deployments:
 
 The server has a read-only deploy key — it can pull but never push.
 
+## Branch-Based Testing on Server
+
+`deploy-update.sh` accepts an optional branch argument, so you can test WIP features on the server before merging to main.
+
+### Usage
+
+```bash
+# Pull a feature branch
+bash scripts/operations/utils/deploy-update.sh dev/phase6-helper
+
+# Return to main when done
+bash scripts/operations/utils/deploy-update.sh main
+```
+
+### Workflow
+
+1. Create a feature branch locally: `git checkout -b dev/phase6-helper`
+2. Develop and commit changes
+3. Push to private repo: `git push -u origin dev/phase6-helper`
+4. On server, pull the branch: `bash scripts/operations/utils/deploy-update.sh dev/phase6-helper`
+5. Test on server (run deployment scripts, validate services, etc.)
+6. Iterate: push fixes locally, pull on server again
+7. When satisfied, open a PR and merge to main
+8. On server, return to main: `bash scripts/operations/utils/deploy-update.sh main`
+
+### Notes
+
+- The server repo may end up on a detached HEAD or non-main branch — the drift check will flag this, which is expected during testing
+- Always return to main after testing: `deploy-update.sh main`
+- The branch must exist on the remote (push before pulling on server)
+
 ## Drift Detection
 
 The drift check script (`scripts/operations/monitoring/check-drift.sh`) detects when the server diverges from the repo:
