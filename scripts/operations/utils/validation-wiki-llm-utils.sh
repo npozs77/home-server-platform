@@ -136,7 +136,7 @@ validate_loc_governance() {
 
     # Helper: count non-empty, non-comment lines
     _count_loc() {
-        grep -v '^\s*#' "$1" | grep -v '^\s*$' | wc -l
+        grep -v '^\s*#' "$1" | grep -c -v '^\s*$'
     }
 
     # Check orchestration script

@@ -102,8 +102,8 @@ validate_ip_address() {
     fi
     
     # Check each octet is 0-255
-    local IFS='.'
-    local -a octets=($ip)
+    local -a octets
+    IFS='.' read -ra octets <<< "$ip"
     for octet in "${octets[@]}"; do
         if ((octet > 255)); then
             print_error "Invalid IP address (octet > 255): $ip"

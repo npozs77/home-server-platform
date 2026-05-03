@@ -53,7 +53,7 @@ validate_pages_directory() {
 
 # Helper: detect site block start (non-indented domain line with {)
 _is_site_start() { [[ "$1" =~ ^[a-zA-Z0-9][a-zA-Z0-9.\-]*\.[a-zA-Z] ]] && [[ "$1" == *"{"* ]]; }
-_site_name() { echo "$1" | sed 's/[[:space:]]*{.*//'; }
+_site_name() { local n="${1%%\{*}"; echo "${n%"${n##*[! ]}"}"; }
 
 # Feature: caddy-startup-page, Property 1: No external resource references
 validate_startup_page_no_external_refs() {

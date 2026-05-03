@@ -164,9 +164,11 @@ else
     # Reload Caddy to trigger certificate generation for the new DNS name
     if docker ps --format '{{.Names}}' | grep -q '^caddy$'; then
         print_info "Reloading Caddy to trigger certificate generation..."
-        docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null && \
-            print_success "Caddy reloaded" || \
+        if docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null; then
+            print_success "Caddy reloaded"
+        else
             print_info "Caddy reload skipped (Caddy route may not be configured yet)"
+        fi
     fi
 
     print_info "Open WebUI accessible at: https://${OPENWEBUI_DOMAIN}"

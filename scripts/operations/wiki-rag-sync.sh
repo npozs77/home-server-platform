@@ -63,7 +63,7 @@ UPLOADED=0; SKIPPED=0; REMOVED=0; ERRORS=0
 # Step 1: Sync new/changed markdown files to Open WebUI RAG
 while IFS= read -r -d '' file; do
     checksum=$(md5sum "$file" | cut -d' ' -f1)
-    relative_path="${file#${WIKI_CONTENT_DIR}/}"
+    relative_path="${file#"${WIKI_CONTENT_DIR}/"}"
 
     # Skip if unchanged
     if grep -q "^${relative_path}:${checksum}$" "$CHECKSUM_FILE" 2>/dev/null; then
@@ -93,6 +93,8 @@ while IFS= read -r -d '' file; do
 done < <(find "$WIKI_CONTENT_DIR" -name "*.md" -type f -print0)
 
 # Step 2: Remove documents from RAG when wiki pages are deleted
+# Read checksum file into memory to avoid read/write on same file in pipeline
+CHECKSUM_SNAPSHOT=$(cat "$CHECKSUM_FILE" 2>/dev/null || true)
 while IFS=: read -r path checksum; do
     [[ -z "$path" ]] && continue
     if [[ ! -f "${WIKI_CONTENT_DIR}/${path}" ]]; then
@@ -104,7 +106,7 @@ while IFS=: read -r path checksum; do
         fi
         REMOVED=$((REMOVED + 1))
     fi
-done < "$CHECKSUM_FILE"
+done <<< "$CHECKSUM_SNAPSHOT"
 
 # Summary
 log_msg "INFO" "$SCRIPT_NAME" "Sync complete: uploaded=${UPLOADED}, skipped=${SKIPPED}, removed=${REMOVED}, errors=${ERRORS}"

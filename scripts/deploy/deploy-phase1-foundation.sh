@@ -20,7 +20,8 @@ SECRETS_CONFIG="/opt/homeserver/configs/secrets.env"
 
 # Dry-run mode
 DRY_RUN=false
-[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true && echo "Running in DRY-RUN mode" && echo ""
+DRY_RUN_ARG=""
+if [[ "${1:-}" == "--dry-run" ]]; then DRY_RUN=true; DRY_RUN_ARG="--dry-run"; echo "Running in DRY-RUN mode"; echo ""; fi
 
 # Check if running as root
 [[ $EUID -ne 0 ]] && { print_error "This script must be run as root (use sudo)"; exit 1; }
@@ -86,26 +87,26 @@ init_config() {
     
     load_config 2>/dev/null || true
     
-    read -p "Timezone [${TIMEZONE:-Europe/Amsterdam}]: " input
+    read -rp "Timezone [${TIMEZONE:-Europe/Amsterdam}]: " input
     TIMEZONE="${input:-${TIMEZONE:-Europe/Amsterdam}}"
     
-    read -p "Hostname [${HOSTNAME:-homeserver}]: " input
+    read -rp "Hostname [${HOSTNAME:-homeserver}]: " input
     HOSTNAME="${input:-${HOSTNAME:-homeserver}}"
     
-    read -p "Server IP [${SERVER_IP:-192.168.1.2}]: " input
+    read -rp "Server IP [${SERVER_IP:-192.168.1.2}]: " input
     SERVER_IP="${input:-${SERVER_IP:-192.168.1.2}}"
     
-    read -p "Admin user [${ADMIN_USER:-$SUDO_USER}]: " input
+    read -rp "Admin user [${ADMIN_USER:-$SUDO_USER}]: " input
     ADMIN_USER="${input:-${ADMIN_USER:-$SUDO_USER}}"
     
-    read -p "Admin email [${ADMIN_EMAIL:-admin@mydomain.com}]: " input
+    read -rp "Admin email [${ADMIN_EMAIL:-admin@mydomain.com}]: " input
     ADMIN_EMAIL="${input:-${ADMIN_EMAIL:-admin@mydomain.com}}"
     
     echo ""
     print_info "Available disks:"
     lsblk -d -o NAME,SIZE,TYPE | grep disk
     echo ""
-    read -p "Data disk [${DATA_DISK:-/dev/sdb}]: " input
+    read -rp "Data disk [${DATA_DISK:-/dev/sdb}]: " input
     DATA_DISK="${input:-${DATA_DISK:-/dev/sdb}}"
     
     DATA_MOUNT="${DATA_MOUNT:-/mnt/data}"
@@ -113,23 +114,23 @@ init_config() {
     echo ""
     print_info "Backup DAS configuration (external USB/DAS drive for backups):"
     print_info "  Leave blank if no backup drive is connected yet."
-    read -p "Backup disk partition [${BACKUP_DISK:-/dev/sdb2}]: " input
+    read -rp "Backup disk partition [${BACKUP_DISK:-/dev/sdb2}]: " input
     BACKUP_DISK="${input:-${BACKUP_DISK:-/dev/sdb2}}"
     BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
     BACKUP_MAPPER="${BACKUP_MAPPER:-backup_crypt}"
     
-    read -sp "LUKS passphrase (20+ characters): " input
+    read -rsp "LUKS passphrase (20+ characters): " input
     echo ""
     LUKS_PASSPHRASE="${input:-${LUKS_PASSPHRASE:-}}"
     
-    read -p "Git user name [${GIT_USER_NAME:-Admin User}]: " input
+    read -rp "Git user name [${GIT_USER_NAME:-Admin User}]: " input
     GIT_USER_NAME="${input:-${GIT_USER_NAME:-Admin User}}"
     
-    read -p "Git user email [${GIT_USER_EMAIL:-admin@home.mydomain.com}]: " input
+    read -rp "Git user email [${GIT_USER_EMAIL:-admin@home.mydomain.com}]: " input
     GIT_USER_EMAIL="${input:-${GIT_USER_EMAIL:-admin@home.mydomain.com}}"
     
     NETWORK_INTERFACE="${NETWORK_INTERFACE:-$(ip route | grep default | awk '{print $5}' | head -n1)}"
-    read -p "Network interface [${NETWORK_INTERFACE}]: " input
+    read -rp "Network interface [${NETWORK_INTERFACE}]: " input
     NETWORK_INTERFACE="${input:-${NETWORK_INTERFACE}}"
     
     echo ""
@@ -146,64 +147,64 @@ validate_config() {
     local status=0
     validate_required_vars "TIMEZONE" "HOSTNAME" "SERVER_IP" "ADMIN_USER" "ADMIN_EMAIL" "DATA_DISK" "LUKS_PASSPHRASE" "GIT_USER_NAME" "GIT_USER_EMAIL" "NETWORK_INTERFACE" || status=1
     
-    timedatectl list-timezones | grep -q "^${TIMEZONE}$" && print_success "Timezone valid" || { print_error "Timezone invalid"; status=1; }
-    [[ "$HOSTNAME" =~ ^[a-zA-Z0-9-]+$ ]] && print_success "Hostname valid" || { print_error "Hostname invalid"; status=1; }
-    validate_ip_address "$SERVER_IP" && print_success "Server IP valid" || { print_error "Server IP invalid"; status=1; }
-    id "$ADMIN_USER" &>/dev/null && print_success "Admin user exists" || { print_error "Admin user missing"; status=1; }
-    validate_email "$ADMIN_EMAIL" && print_success "Admin email valid" || { print_error "Admin email invalid"; status=1; }
-    [[ -b "$DATA_DISK" ]] && print_success "Data disk exists" || { print_error "Data disk missing"; status=1; }
-    [[ ${#LUKS_PASSPHRASE} -ge 20 ]] && print_success "LUKS passphrase strong" || { print_error "LUKS passphrase weak"; status=1; }
+    if timedatectl list-timezones | grep -q "^${TIMEZONE}$"; then print_success "Timezone valid"; else print_error "Timezone invalid"; status=1; fi
+    if [[ "$HOSTNAME" =~ ^[a-zA-Z0-9-]+$ ]]; then print_success "Hostname valid"; else print_error "Hostname invalid"; status=1; fi
+    if validate_ip_address "$SERVER_IP"; then print_success "Server IP valid"; else print_error "Server IP invalid"; status=1; fi
+    if id "$ADMIN_USER" &>/dev/null; then print_success "Admin user exists"; else print_error "Admin user missing"; status=1; fi
+    if validate_email "$ADMIN_EMAIL"; then print_success "Admin email valid"; else print_error "Admin email invalid"; status=1; fi
+    if [[ -b "$DATA_DISK" ]]; then print_success "Data disk exists"; else print_error "Data disk missing"; status=1; fi
+    if [[ ${#LUKS_PASSPHRASE} -ge 20 ]]; then print_success "LUKS passphrase strong"; else print_error "LUKS passphrase weak"; status=1; fi
     
     echo ""
-    [[ $status -eq 0 ]] && { print_success "All checks passed!"; return 0; } || { print_error "Some checks failed"; return 1; }
+    if [[ $status -eq 0 ]]; then print_success "All checks passed!"; return 0; else print_error "Some checks failed"; return 1; fi
 }
 
 # Task execution functions
 execute_update_system() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export TIMEZONE HOSTNAME
-    "${SCRIPT_DIR}/tasks/task-ph1-01-update-system.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    "${SCRIPT_DIR}/tasks/task-ph1-01-update-system.sh" ${DRY_RUN_ARG}
 }
 
 execute_setup_luks() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export DATA_DISK LUKS_PASSPHRASE DATA_MOUNT
-    "${SCRIPT_DIR}/tasks/task-ph1-02-setup-luks.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    "${SCRIPT_DIR}/tasks/task-ph1-02-setup-luks.sh" ${DRY_RUN_ARG}
 }
 
 execute_harden_ssh() {
     load_config || { print_error "Configuration not loaded"; return 1; }
-    "${SCRIPT_DIR}/tasks/task-ph1-03-harden-ssh.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    "${SCRIPT_DIR}/tasks/task-ph1-03-harden-ssh.sh" ${DRY_RUN_ARG}
 }
 
 execute_configure_firewall() {
-    "${SCRIPT_DIR}/tasks/task-ph1-04-configure-firewall.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    "${SCRIPT_DIR}/tasks/task-ph1-04-configure-firewall.sh" ${DRY_RUN_ARG}
 }
 
 execute_setup_fail2ban() {
-    "${SCRIPT_DIR}/tasks/task-ph1-05-setup-fail2ban.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    "${SCRIPT_DIR}/tasks/task-ph1-05-setup-fail2ban.sh" ${DRY_RUN_ARG}
 }
 
 execute_install_docker() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export ADMIN_USER
-    "${SCRIPT_DIR}/tasks/task-ph1-06-install-docker.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    "${SCRIPT_DIR}/tasks/task-ph1-06-install-docker.sh" ${DRY_RUN_ARG}
 }
 
 execute_init_git_repo() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export ADMIN_USER GIT_USER_NAME GIT_USER_EMAIL
-    "${SCRIPT_DIR}/tasks/task-ph1-07-init-git-repo.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    "${SCRIPT_DIR}/tasks/task-ph1-07-init-git-repo.sh" ${DRY_RUN_ARG}
 }
 
 execute_setup_auto_updates() {
-    "${SCRIPT_DIR}/tasks/task-ph1-08-setup-auto-updates.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    "${SCRIPT_DIR}/tasks/task-ph1-08-setup-auto-updates.sh" ${DRY_RUN_ARG}
 }
 
 execute_setup_shell_environment() {
     load_config || { print_error "Configuration not loaded"; return 1; }
     export ADMIN_USER
-    "${SCRIPT_DIR}/tasks/task-ph1-09-setup-shell-environment.sh" $([[ "$DRY_RUN" == true ]] && echo "--dry-run")
+    "${SCRIPT_DIR}/tasks/task-ph1-09-setup-shell-environment.sh" ${DRY_RUN_ARG}
 }
 
 # Validation function
@@ -236,7 +237,7 @@ validate_all() {
     echo "========================================"
     echo "Results: $passed/$total checks passed"
     echo "========================================"
-    [[ $passed -eq $total ]] && { print_success "All checks passed!"; return 0; } || { print_error "Some checks failed"; return 1; }
+    if [[ $passed -eq $total ]]; then print_success "All checks passed!"; return 0; else print_error "Some checks failed"; return 1; fi
 }
 
 # Interactive menu
@@ -263,7 +264,7 @@ main_menu() {
         echo "v. Validate all"
         echo "q. Quit"
         echo ""
-        read -p "Select option [0,c,1-9,v,q]: " option
+        read -rp "Select option [0,c,1-9,v,q]: " option
         echo ""
         
         case $option in
@@ -284,7 +285,7 @@ main_menu() {
         esac
         
         echo ""
-        read -p "Press Enter to continue..."
+        read -rp "Press Enter to continue..."
     done
 }
 

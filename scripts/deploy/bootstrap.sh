@@ -68,7 +68,7 @@ echo ""
 
 # Select interface
 while true; do
-    read -p "Select interface [1-${#interfaces[@]}]: " selection
+    read -rp "Select interface [1-${#interfaces[@]}]: " selection
     if [[ "$selection" =~ ^[0-9]+$ ]] && [[ "$selection" -ge 1 ]] && [[ "$selection" -le ${#interfaces[@]} ]]; then
         break
     fi
@@ -91,14 +91,14 @@ if [[ "$is_wifi" == true ]]; then
     echo ""
     
     # Get WiFi SSID
-    read -p "Enter WiFi SSID: " wifi_ssid
+    read -rp "Enter WiFi SSID: " wifi_ssid
     if [[ -z "$wifi_ssid" ]]; then
         print_error "SSID cannot be empty"
         exit 1
     fi
     
     # Get WiFi password
-    read -sp "Enter WiFi password: " wifi_password
+    read -rsp "Enter WiFi password: " wifi_password
     echo ""
     if [[ -z "$wifi_password" ]]; then
         print_error "Password cannot be empty"

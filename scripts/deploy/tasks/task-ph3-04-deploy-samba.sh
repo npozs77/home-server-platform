@@ -50,7 +50,7 @@ fi
 if docker ps -a --format '{{.Names}}' | grep -q '^samba$'; then
     echo "Samba container already exists"
     if [[ "$DRY_RUN" == false ]]; then
-        read -p "Recreate? (y/n): " confirm
+        read -rp "Recreate? (y/n): " confirm
         if [[ "$confirm" != "y" ]]; then
             echo "Skipping Samba container deployment"
             exit 0
@@ -159,7 +159,7 @@ EOFSAMBA
     
     echo "✓ UFW allows Samba ports 139 and 445 from LAN"
     
-    echo "Samba is accessible at \\\\192.168.1.2 (Windows) or smb://192.168.1.2 (macOS/Linux)"
+    printf 'Samba is accessible at \\\\192.168.1.2 (Windows) or smb://192.168.1.2 (macOS/Linux)\n'
 fi
 
 echo "✓ Task complete"

@@ -39,7 +39,11 @@ COMPOSE_FILE="${COMPOSE_DIR}/ollama.yml"
 # Source configuration
 print_info "Loading configuration..."
 for envfile in "$FOUNDATION_ENV" "$SERVICES_ENV"; do
-    [[ -f "$envfile" ]] && source "$envfile" || { print_error "Missing: $envfile"; exit 3; }
+    if [[ -f "$envfile" ]]; then
+        source "$envfile"
+    else
+        print_error "Missing: $envfile"; exit 3
+    fi
 done
 if [[ -f "$SECRETS_ENV" ]]; then
     while IFS='=' read -r key value; do
@@ -87,6 +91,7 @@ print_info "Users to provision: ${ALL_USERS[*]}"
 # --- Helper: get email for user ---
 get_email() {
     local u="$1"
+    # shellcheck disable=SC2153  # ADMIN_EMAIL is sourced from foundation.env
     [[ "$u" == "$ADMIN_USER" ]] && echo "$ADMIN_EMAIL" || echo "${u}@${INTERNAL_SUBDOMAIN:-homeserver.local}"
 }
 

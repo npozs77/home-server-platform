@@ -50,14 +50,19 @@ function fix_family_permissions() {
     fi
     
     # Count files and directories
-    local total_dirs=$(find "${family_dir}" -type d | wc -l)
-    local total_files=$(find "${family_dir}" -type f | wc -l)
+    local total_dirs
+    total_dirs=$(find "${family_dir}" -type d | wc -l)
+    local total_files
+    total_files=$(find "${family_dir}" -type f | wc -l)
     log "Found ${total_dirs} directories and ${total_files} files in ${family_dir}"
     
     # Check for incorrect permissions
-    local incorrect_group=$(find "${family_dir}" -not -group family | wc -l)
-    local incorrect_dir_perms=$(find "${family_dir}" -type d -not -perm 2775 | wc -l)
-    local incorrect_file_perms=$(find "${family_dir}" -type f -not -perm 664 | wc -l)
+    local incorrect_group
+    incorrect_group=$(find "${family_dir}" -not -group family | wc -l)
+    local incorrect_dir_perms
+    incorrect_dir_perms=$(find "${family_dir}" -type d -not -perm 2775 | wc -l)
+    local incorrect_file_perms
+    incorrect_file_perms=$(find "${family_dir}" -type f -not -perm 664 | wc -l)
     
     log "Issues found:"
     log "  - ${incorrect_group} items with incorrect group (should be family)"
@@ -111,15 +116,21 @@ function fix_media_permissions() {
     fi
     
     # Count files and directories
-    local total_dirs=$(find "${media_dir}" -type d | wc -l)
-    local total_files=$(find "${media_dir}" -type f | wc -l)
+    local total_dirs
+    total_dirs=$(find "${media_dir}" -type d | wc -l)
+    local total_files
+    total_files=$(find "${media_dir}" -type f | wc -l)
     log "Found ${total_dirs} directories and ${total_files} files in ${media_dir}"
     
     # Check for incorrect permissions
-    local incorrect_owner=$(find "${media_dir}" -not -user media | wc -l)
-    local incorrect_group=$(find "${media_dir}" -not -group media | wc -l)
-    local incorrect_dir_perms=$(find "${media_dir}" -type d -not -perm 2775 | wc -l)
-    local incorrect_file_perms=$(find "${media_dir}" -type f -not -perm 664 | wc -l)
+    local incorrect_owner
+    incorrect_owner=$(find "${media_dir}" -not -user media | wc -l)
+    local incorrect_group
+    incorrect_group=$(find "${media_dir}" -not -group media | wc -l)
+    local incorrect_dir_perms
+    incorrect_dir_perms=$(find "${media_dir}" -type d -not -perm 2775 | wc -l)
+    local incorrect_file_perms
+    incorrect_file_perms=$(find "${media_dir}" -type f -not -perm 664 | wc -l)
     
     log "Issues found:"
     log "  - ${incorrect_owner} items with incorrect owner (should be media)"
@@ -162,7 +173,8 @@ function verify_fixes() {
     
     # Verify Family share
     if [ -d "${family_dir}" ]; then
-        local family_incorrect=$(find "${family_dir}" -not -group family -o -type d -not -perm 2775 -o -type f -not -perm 664 | wc -l)
+        local family_incorrect
+        family_incorrect=$(find "${family_dir}" -not -group family -o -type d -not -perm 2775 -o -type f -not -perm 664 | wc -l)
         if [ "${family_incorrect}" -gt 0 ]; then
             log "WARNING: ${family_incorrect} items in Family share still have incorrect permissions"
             all_good=false
@@ -173,7 +185,8 @@ function verify_fixes() {
     
     # Verify Media share
     if [ -d "${media_dir}" ]; then
-        local media_incorrect=$(find "${media_dir}" -not -group media -o -type d -not -perm 2775 -o -type f -not -perm 664 | wc -l)
+        local media_incorrect
+        media_incorrect=$(find "${media_dir}" -not -group media -o -type d -not -perm 2775 -o -type f -not -perm 664 | wc -l)
         if [ "${media_incorrect}" -gt 0 ]; then
             log "WARNING: ${media_incorrect} items in Media share still have incorrect permissions"
             all_good=false

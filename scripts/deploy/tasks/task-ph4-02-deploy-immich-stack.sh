@@ -109,7 +109,7 @@ GENERATE_COMPOSE=false
 if [[ -f "$COMPOSE_FILE" ]]; then
     print_info "immich.yml already exists"
     if [[ "$DRY_RUN" == false ]]; then
-        read -p "Overwrite? (y/n): " confirm
+        read -rp "Overwrite? (y/n): " confirm
         if [[ "$confirm" == "y" ]]; then
             GENERATE_COMPOSE=true
         else

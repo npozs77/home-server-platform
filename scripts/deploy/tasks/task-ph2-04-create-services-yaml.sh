@@ -38,7 +38,7 @@ validate_required_vars "DOMAIN" "INTERNAL_SUBDOMAIN" "SMTP2GO_HOST" "SMTP2GO_POR
 if [[ -f /opt/homeserver/configs/services.yaml ]]; then
     print_info "services.yaml already exists"
     if [[ "$DRY_RUN" == false ]]; then
-        read -p "Overwrite? (y/n): " confirm
+        read -rp "Overwrite? (y/n): " confirm
         if [[ "$confirm" != "y" ]]; then
             print_info "Skipping services.yaml creation"
             exit 0

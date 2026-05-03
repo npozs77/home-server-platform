@@ -100,15 +100,14 @@ for pattern in /etc/msmtp* /etc/logrotate.d/homeserver-*; do
     done
 done
 
-# Copy gitleaks config and git hooks (PII-sensitive, not in Git)
-for f in /opt/homeserver/.gitleaks.toml; do
-    [[ -e "$f" ]] || continue
+# Copy gitleaks config (PII-sensitive, not in Git)
+if [[ -e /opt/homeserver/.gitleaks.toml ]]; then
     if $DRY_RUN; then
-        log_msg "INFO" "$SCRIPT_NAME" "dry-run: would copy $f"
+        log_msg "INFO" "$SCRIPT_NAME" "dry-run: would copy /opt/homeserver/.gitleaks.toml"
     else
-        cp -p "$f" "${BACKUP_DEST}/homeserver/" || { log_msg "WARN" "$SCRIPT_NAME" "Failed to copy $f"; }
+        cp -p /opt/homeserver/.gitleaks.toml "${BACKUP_DEST}/homeserver/" || { log_msg "WARN" "$SCRIPT_NAME" "Failed to copy .gitleaks.toml"; }
     fi
-done
+fi
 if [[ -d /opt/homeserver/.git/hooks ]]; then
     mkdir -p "${BACKUP_DEST}/homeserver/git-hooks"
     if $DRY_RUN; then

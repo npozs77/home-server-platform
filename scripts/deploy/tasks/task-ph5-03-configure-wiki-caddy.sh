@@ -88,9 +88,11 @@ if grep -q "^${WIKI_DOMAIN}" "$CADDYFILE"; then
     print_success "Wiki.js entry already exists in Caddyfile — skipping"
     # Still reload Caddy in case previous run added entry but didn't reload
     print_info "Reloading Caddy..."
-    docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null && \
-        print_success "Caddy reloaded" || \
+    if docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null; then
+        print_success "Caddy reloaded"
+    else
         print_info "Caddy reload failed — check Caddy logs"
+    fi
     exit 0
 fi
 

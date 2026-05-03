@@ -25,8 +25,10 @@ function validate_jellyfin_library_folder() {
     fi
     
     # Check ownership
-    local actual_owner=$(stat -c "%U" "$library_path")
-    local actual_group=$(stat -c "%G" "$library_path")
+    local actual_owner
+    actual_owner=$(stat -c "%U" "$library_path")
+    local actual_group
+    actual_group=$(stat -c "%G" "$library_path")
     if [[ "$actual_owner" != "$expected_owner" ]] || [[ "$actual_group" != "$expected_group" ]]; then
         echo "ERROR: Library folder has incorrect ownership: $library_path"
         echo "  Expected: $expected_owner:$expected_group"
@@ -35,7 +37,8 @@ function validate_jellyfin_library_folder() {
     fi
     
     # Check permissions
-    local actual_perms=$(stat -c "%a" "$library_path")
+    local actual_perms
+    actual_perms=$(stat -c "%a" "$library_path")
     if [[ "$actual_perms" != "$expected_perms" ]]; then
         echo "ERROR: Library folder has incorrect permissions: $library_path"
         echo "  Expected: $expected_perms"
@@ -58,14 +61,16 @@ function validate_jellyfin_media_group_access() {
     fi
     
     # Get media group GID
-    local media_gid=$(getent group media | cut -d: -f3)
+    local media_gid
+    media_gid=$(getent group media | cut -d: -f3)
     if [[ -z "$media_gid" ]]; then
         echo "ERROR: media group does not exist"
         return 1
     fi
     
     # Check container has media group
-    local container_groups=$(docker exec jellyfin id -G 2>/dev/null)
+    local container_groups
+    container_groups=$(docker exec jellyfin id -G 2>/dev/null)
     if [[ ! "$container_groups" =~ $media_gid ]]; then
         echo "ERROR: Jellyfin container does not have media group access (GID $media_gid)"
         echo "  Container groups: $container_groups"

@@ -65,7 +65,7 @@ print_info "media group GID: $MEDIA_GID"
 if [[ -f configs/docker-compose/jellyfin.yml ]]; then
     print_info "jellyfin.yml already exists"
     if [[ "$DRY_RUN" == false ]]; then
-        read -p "Overwrite? (y/n): " confirm
+        read -rp "Overwrite? (y/n): " confirm
         if [[ "$confirm" != "y" ]]; then
             print_info "Skipping Jellyfin Docker Compose creation"
             exit 0

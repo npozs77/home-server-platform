@@ -87,7 +87,7 @@ fi
 
 if $DRY_RUN; then
     log_msg "INFO" "$SCRIPT_NAME" "dry-run: would send alert — ${SUBJECT}"
-    printf "dry-run alert body:\n${BODY}\n"
+    printf "dry-run alert body:\n%s\n" "$BODY"
 else
     send_alert_email "$SUBJECT" "$BODY"
 fi

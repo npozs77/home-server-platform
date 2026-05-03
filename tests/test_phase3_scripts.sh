@@ -237,9 +237,16 @@ test_dry_run_support() {
     run_test "Deployment script has dry-run support"
     
     if grep -q "DRY_RUN" scripts/deploy/deploy-phase3-core-services.sh; then
-        print_pass "Dry-run support implemented"
+        print_pass "Dry-run mode variable exists"
     else
-        print_fail "Dry-run support missing"
+        print_fail "Dry-run mode variable missing"
+        return 1
+    fi
+    
+    if grep -q 'DRY_RUN_ARG\|--dry-run' scripts/deploy/deploy-phase3-core-services.sh; then
+        print_pass "Dry-run mode checks exist"
+    else
+        print_fail "Dry-run mode checks missing"
         return 1
     fi
 }

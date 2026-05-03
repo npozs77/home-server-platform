@@ -275,7 +275,7 @@ test_deployment_dryrun() {
         return 1
     fi
     
-    if grep -q '\[\[ "\$DRY_RUN" == true \]\]' scripts/deploy/deploy-phase1-foundation.sh; then
+    if grep -q 'DRY_RUN_ARG\|DRY_RUN.*true' scripts/deploy/deploy-phase1-foundation.sh; then
         print_pass "Dry-run mode checks exist"
         return 0
     else

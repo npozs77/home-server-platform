@@ -41,9 +41,9 @@ if [[ ! -f "${REPO_ROOT}/.gitleaks.toml" ]]; then
     if [[ -z "$DOMAIN" && -z "$USERNAME" && -z "$GITUSER" ]]; then
         echo ""
         echo "Configure PII detection rules (leave blank to skip):"
-        read -p "  Real domain (e.g. example.net): " DOMAIN
-        read -p "  Real username (e.g. johndoe): " USERNAME
-        read -p "  Real git username (e.g. jdoe42): " GITUSER
+        read -rp "  Real domain (e.g. example.net): " DOMAIN
+        read -rp "  Real username (e.g. johndoe): " USERNAME
+        read -rp "  Real git username (e.g. jdoe42): " GITUSER
     fi
 
     cat > "${REPO_ROOT}/.gitleaks.toml" << TOML

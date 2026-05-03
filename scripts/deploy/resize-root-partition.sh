@@ -39,7 +39,7 @@ echo "Root disk: /dev/$ROOT_DISK"
 echo ""
 
 # Confirm with user
-read -p "Do you want to proceed with resizing? (type 'yes' to continue): " CONFIRM
+read -rp "Do you want to proceed with resizing? (type 'yes' to continue): " CONFIRM
 if [ "$CONFIRM" != "yes" ]; then
     echo "Aborted by user"
     exit 0
@@ -63,12 +63,12 @@ PART_NUM=$(echo "$ROOT_PARTITION" | grep -o '[0-9]*$')
 # Resize partition
 echo ""
 echo "Step 2: Resizing partition..."
-parted /dev/$ROOT_DISK resizepart $PART_NUM 50GB
+parted "/dev/$ROOT_DISK" resizepart "$PART_NUM" 50GB
 
 # Create new partition
 echo ""
 echo "Step 3: Creating new partition from freed space..."
-parted /dev/$ROOT_DISK mkpart primary ext4 50GB 100%
+parted "/dev/$ROOT_DISK" mkpart primary ext4 50GB 100%
 
 # Get new partition number (should be next number)
 NEW_PART_NUM=$((PART_NUM + 1))

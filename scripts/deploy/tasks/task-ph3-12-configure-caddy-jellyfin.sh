@@ -78,7 +78,7 @@ else
     print_info "Adding Jellyfin entry to Caddyfile..."
     
     # Backup Caddyfile
-    cp /opt/homeserver/configs/caddy/Caddyfile /opt/homeserver/configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S)
+    cp /opt/homeserver/configs/caddy/Caddyfile "/opt/homeserver/configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S)"
     
     # Add Jellyfin entry
     cat >> /opt/homeserver/configs/caddy/Caddyfile << EOFCADDY
@@ -108,7 +108,7 @@ EOFCADDY
     else
         print_error "Caddyfile syntax invalid"
         print_error "Restoring backup..."
-        mv /opt/homeserver/configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S) /opt/homeserver/configs/caddy/Caddyfile
+        mv "/opt/homeserver/configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S)" /opt/homeserver/configs/caddy/Caddyfile
         exit 1
     fi
     
@@ -119,7 +119,7 @@ EOFCADDY
     else
         print_error "Failed to reload Caddy configuration"
         print_error "Restoring backup..."
-        mv /opt/homeserver/configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S) /opt/homeserver/configs/caddy/Caddyfile
+        mv "/opt/homeserver/configs/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S)" /opt/homeserver/configs/caddy/Caddyfile
         docker exec caddy caddy reload --config /etc/caddy/Caddyfile
         exit 1
     fi
