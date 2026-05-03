@@ -63,6 +63,12 @@ else
     cd /opt/homeserver
 fi
 
+# Allow root to operate on this repo (cron jobs run as root)
+if ! git config --global --get-all safe.directory 2>/dev/null | grep -qx '/opt/homeserver'; then
+    print_info "Adding /opt/homeserver to root safe.directory..."
+    git config --global --add safe.directory /opt/homeserver
+fi
+
 # Create directory structure
 print_info "Creating directory structure..."
 sudo -u "$ADMIN_USER" mkdir -p docs

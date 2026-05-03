@@ -10,12 +10,43 @@ This project uses a two-repo Git model for deployment and public sharing:
 
 ## Architecture
 
+```mermaid
+graph TB
+    subgraph "Dev Machine"
+        DEV["Local Clone - Private Repo"]
+    end
+
+    subgraph "GitHub"
+        PRIV["home-server-internal (Private)"]
+        PUB["home-server-platform (Public)"]
+        CI_VAL["CI Validation Workflow"]
+        CI_MIR["CI Mirror Workflow"]
+    end
+
+    subgraph "Home Server"
+        SRV["/opt/homeserver/ (Server Repo)"]
+        DRIFT["check-drift.sh (Daily Cron)"]
+        DEPLOY["deploy-update.sh"]
+    end
+
+    DEV -->|git push| PRIV
+    PRIV -->|any branch push| CI_VAL
+    PRIV -->|main branch push| CI_MIR
+    CI_MIR -->|validate then strip + force-push| PUB
+    SRV -->|git pull read-only| PRIV
+    DEPLOY -->|runs| SRV
+    DRIFT -->|git fetch + compare| PRIV
+    DRIFT -->|email alert| ALERT["msmtp / SMTP2Go"]
 ```
-Developer pushes → Private Repo → CI validates → Mirror strips private files → Public Repo
-                                                ↓
-                  Server pulls (deploy key) ← Private Repo (read-only)
-                                                ↓
-                  Drift check (daily cron) compares HEAD vs origin/main
+
+### Data Flow
+
+```
+Developer pushes → Private Repo → CI validates → CI mirrors to Public Repo
+                                              ↓
+                        Server pulls (manual) ← Private Repo (deploy key, read-only)
+                                              ↓
+                        Drift check (daily cron) compares HEAD vs origin/main
 ```
 
 ## Git-Pull Deployment
@@ -54,6 +85,15 @@ The drift check script (`scripts/operations/monitoring/check-drift.sh`) detects 
 | */15 min | check-container-health.sh |
 | 06:00 | watchdog.sh |
 | 08:00 | check-drift.sh |
+
+## CI Pipeline
+
+On every push to any branch:
+
+1. Run CI-safe tests (`bash tests/run-all.sh --ci`)
+2. Shellcheck lint all `.sh` files (`shellcheck -S warning`)
+3. Validate governance (script size limits)
+4. Gitleaks secret scan
 
 ## CI Mirror
 
@@ -97,8 +137,10 @@ bash scripts/operations/utils/install-git-hooks.sh
 ```
 
 This installs:
-- `pre-commit`: blocks commits on `main`
+- `pre-commit`: blocks commits on `main` + shellcheck lint on staged `.sh` files
 - `pre-push`: blocks pushes to `main`
+
+Shellcheck runs at `-S warning` severity on staged `.sh` files only. If shellcheck is not installed, it prints a warning and continues. Install with `brew install shellcheck` (macOS) or `apt install shellcheck` (Ubuntu).
 
 Workflow: create a feature branch, commit there, push, open a PR. CI validates before merge.
 
