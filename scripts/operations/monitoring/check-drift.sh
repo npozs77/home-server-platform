@@ -83,7 +83,7 @@ if $FETCH_OK && [[ -n "$CURRENT_BRANCH" ]]; then
         fi
     fi
     if [[ "$CURRENT_BRANCH" != "main" ]]; then
-        add_warning "Server is on branch '${CURRENT_BRANCH}' (not main) — return to main when done: deploy-update.sh main"
+        log_msg "INFO" "$SCRIPT_NAME" "Server is on branch '${CURRENT_BRANCH}' (not main)"
     fi
 fi
 
