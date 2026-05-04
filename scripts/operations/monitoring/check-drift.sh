@@ -43,19 +43,32 @@ if ! git remote get-url origin &>/dev/null; then
 fi
 
 # Fetch latest (graceful failure)
-# When running as root (sudo), the deploy key SSH config isn't available.
-# Detect the repo owner's deploy key and use GIT_SSH_COMMAND if needed.
+# When running as root (sudo/cron), the user's SSH config isn't available.
+# The remote URL may use an SSH alias (e.g. github-deploy) that only resolves
+# via the user's ~/.ssh/config. We detect the deploy key and resolve the alias
+# to the real hostname so git fetch works without SSH config.
 FETCH_OK=true
 _GIT_SSH_CMD=""
+_FETCH_URL="origin"
 if [[ $EUID -eq 0 ]]; then
     REPO_OWNER=$(stat -c '%U' "$REPO_DIR/.git" 2>/dev/null || echo "")
     DEPLOY_KEY="/home/${REPO_OWNER}/.ssh/deploy_key"
     if [[ -n "$REPO_OWNER" ]] && [[ -f "$DEPLOY_KEY" ]]; then
         _GIT_SSH_CMD="ssh -i ${DEPLOY_KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+        # Resolve SSH alias in remote URL (e.g. git@github-deploy:org/repo → git@github.com:org/repo)
+        _REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+        _SSH_HOST=$(echo "$_REMOTE_URL" | sed -n 's/^git@\([^:]*\):.*/\1/p')
+        if [[ -n "$_SSH_HOST" ]] && [[ "$_SSH_HOST" != *"."* ]]; then
+            # It's an alias (no dots) — look up real hostname from user's SSH config
+            _REAL_HOST=$(sed -n "/^Host ${_SSH_HOST}\$/,/^Host /{ s/^[[:space:]]*HostName[[:space:]]*//p; }" "/home/${REPO_OWNER}/.ssh/config" 2>/dev/null || echo "")
+            if [[ -n "$_REAL_HOST" ]]; then
+                _FETCH_URL=$(echo "$_REMOTE_URL" | sed "s/^git@${_SSH_HOST}:/git@${_REAL_HOST}:/")
+            fi
+        fi
     fi
 fi
 if [[ -n "$_GIT_SSH_CMD" ]]; then
-    GIT_SSH_COMMAND="$_GIT_SSH_CMD" git fetch origin 2>/dev/null || { add_warning "git fetch failed — network or deploy key issue, local-only checks follow"; FETCH_OK=false; }
+    GIT_SSH_COMMAND="$_GIT_SSH_CMD" git fetch "$_FETCH_URL" "+refs/heads/*:refs/remotes/origin/*" 2>/dev/null || { add_warning "git fetch failed — network or deploy key issue, local-only checks follow"; FETCH_OK=false; }
 else
     git fetch origin 2>/dev/null || { add_warning "git fetch failed — network or deploy key issue, local-only checks follow"; FETCH_OK=false; }
 fi
