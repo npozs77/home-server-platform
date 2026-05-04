@@ -8,6 +8,8 @@
 
 set -euo pipefail
 
+if ! command -v yq &>/dev/null; then echo "SKIP: yq not installed"; exit 0; fi
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
 TESTS_RUN=0; TESTS_PASSED=0; TESTS_FAILED=0
 print_pass() { TESTS_PASSED=$((TESTS_PASSED + 1)); }
