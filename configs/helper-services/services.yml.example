@@ -32,9 +32,6 @@ services:
     image: musivault:latest
     port: 3000
     visibility: private
-    volumes:
-      - /mnt/data/services/musivault/data:/app/data
-      - /mnt/data/services/musivault/music:/music
     environment:
       MUSIC_DIR: "/music"
     memory_limit: "1G"
@@ -44,9 +41,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    backup:
-      pre_command: "docker exec musivault-db pg_dump -U musivault musivault"
-      pre_command_output: "db-dump.sql"
 
   # Non-HTTP background worker (no_proxy, host port)
   my-worker:
