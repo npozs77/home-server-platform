@@ -234,8 +234,9 @@ create_data_directory() {
         print_info "[dry-run] Would create ${data_dir}"; return 0
     fi
     mkdir -p "$data_dir"
-    chown root:root "$data_dir"
-    chmod 755 "$data_dir"
+    # Use permissive mode so any container UID can write (containers run as
+    # various non-root users — e.g. vocabgen runs as UID 65532)
+    chmod 777 "$data_dir"
     # Create subdirectories from volume mappings
     while IFS= read -r vol; do
         local host_path="${vol%%:*}"

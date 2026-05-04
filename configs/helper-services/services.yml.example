@@ -13,8 +13,6 @@ services:
     port: 8080
     visibility: public
     subdomain: vocab
-    volumes:
-      - /mnt/data/services/vocabgen/data:/app/data
     environment:
       NODE_ENV: "production"
     memory_limit: "512M"
