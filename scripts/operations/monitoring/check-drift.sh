@@ -43,10 +43,21 @@ if ! git remote get-url origin &>/dev/null; then
 fi
 
 # Fetch latest (graceful failure)
+# When running as root (sudo), the deploy key SSH config isn't available.
+# Detect the repo owner's deploy key and use GIT_SSH_COMMAND if needed.
 FETCH_OK=true
-if ! git fetch origin 2>/dev/null; then
-    add_warning "git fetch failed — network or deploy key issue, local-only checks follow"
-    FETCH_OK=false
+_GIT_SSH_CMD=""
+if [[ $EUID -eq 0 ]]; then
+    REPO_OWNER=$(stat -c '%U' "$REPO_DIR/.git" 2>/dev/null || echo "")
+    DEPLOY_KEY="/home/${REPO_OWNER}/.ssh/deploy_key"
+    if [[ -n "$REPO_OWNER" ]] && [[ -f "$DEPLOY_KEY" ]]; then
+        _GIT_SSH_CMD="ssh -i ${DEPLOY_KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+    fi
+fi
+if [[ -n "$_GIT_SSH_CMD" ]]; then
+    GIT_SSH_COMMAND="$_GIT_SSH_CMD" git fetch origin 2>/dev/null || { add_warning "git fetch failed — network or deploy key issue, local-only checks follow"; FETCH_OK=false; }
+else
+    git fetch origin 2>/dev/null || { add_warning "git fetch failed — network or deploy key issue, local-only checks follow"; FETCH_OK=false; }
 fi
 
 # Check 2: Commits behind origin/{current branch}
