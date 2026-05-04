@@ -139,14 +139,19 @@ dns_record_exists() {
 add_dns_record() {
     local subdomain="$1" dry_run="${2:-false}"
     local fqdn="${subdomain}.${INTERNAL_SUBDOMAIN}"
+    local dns_file="/etc/pihole/custom.list"
+    if [[ ! -f "$dns_file" ]]; then
+        print_error "Pi-hole custom.list not found at ${dns_file} — is Pi-hole deployed?"
+        return "$_SO_ERR_GENERAL"
+    fi
     if dns_record_exists "$subdomain"; then print_info "DNS record for '${fqdn}' already exists — skipping"; return 0; fi
     if [[ "$dry_run" == "true" ]]; then
         print_info "[dry-run] Would add DNS record: ${SERVER_IP} ${fqdn}"; return 0
     fi
-    cp /etc/pihole/custom.list /etc/pihole/custom.list.bak
-    echo "${SERVER_IP} ${fqdn}" >> /etc/pihole/custom.list
+    cp "$dns_file" "${dns_file}.bak"
+    echo "${SERVER_IP} ${fqdn}" >> "$dns_file"
     if ! docker exec pihole pihole restartdns 2>/dev/null; then
-        cp /etc/pihole/custom.list.bak /etc/pihole/custom.list
+        cp "${dns_file}.bak" "$dns_file"
         print_error "Pi-hole DNS restart failed — reverted"; return "$_SO_ERR_GENERAL"
     fi
     print_success "Added DNS record: ${SERVER_IP} ${fqdn}"
@@ -189,7 +194,7 @@ create_data_directory() {
     while IFS= read -r vol; do
         local host_path="${vol%%:*}"
         [[ "$host_path" == "${data_dir}"* ]] && mkdir -p "$host_path"
-    done < <(yq -r ".services.${svc}.volumes[]? // empty" "$SERVICES_CONFIG")
+    done < <(yq -r ".services.${svc}.volumes[]? // \"\"" "$SERVICES_CONFIG" | grep -v '^$')
     print_success "Created data directory: ${data_dir}"
 }
 
@@ -312,7 +317,7 @@ BEOF
     # Additional paths
     while IFS= read -r p; do
         echo "rsync -a \"${p}\" \"\${BACKUP_DEST}/\"" >> "$out"
-    done < <(yq -r ".services.${svc}.backup.paths[]? // empty" "$SERVICES_CONFIG")
+    done < <(yq -r ".services.${svc}.backup.paths[]? // \"\"" "$SERVICES_CONFIG" | grep -v '^$')
 }
 
 _generate_simple_backup_script() {
