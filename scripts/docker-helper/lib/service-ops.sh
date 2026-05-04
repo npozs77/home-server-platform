@@ -74,10 +74,12 @@ validate_service_definition() {
         print_error "Service '${svc}' has invalid visibility '${vis}' — must be 'public' or 'private'"
         return "$_SO_ERR_VALIDATION"
     fi
-    # Container name conflict (dynamic check)
+    # Container name conflict (dynamic check — skip if helper-managed for idempotency)
     if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "$svc"; then
-        print_error "Service name '${svc}' conflicts with existing container"
-        return "$_SO_ERR_CONFLICT"
+        if [[ ! -f "${COMPOSE_DIR}/${svc}/docker-compose.yml" ]]; then
+            print_error "Service name '${svc}' conflicts with existing container"
+            return "$_SO_ERR_CONFLICT"
+        fi
     fi
     return 0
 }
