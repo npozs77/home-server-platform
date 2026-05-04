@@ -64,11 +64,9 @@ validate_service_compose_exists() {
     [[ -n "$svc" ]] && [[ -f "/opt/homeserver/configs/helper-services/${svc}/docker-compose.yml" ]]
 }
 
-# Validate backup script generated for deployed service
+# Validate backup-helper-services.sh exists (dynamic backup, no per-service scripts)
 validate_backup_script_exists() {
-    local svc
-    svc=$(yq -r '.services | keys | .[0]' /opt/homeserver/configs/helper-services/services.yml 2>/dev/null)
-    [[ -n "$svc" ]] && [[ -f "/opt/homeserver/scripts/backup/backup-${svc}.sh" ]]
+    [[ -f "/opt/homeserver/scripts/backup/backup-helper-services.sh" ]]
 }
 
 # Validate Caddy entry exists for deployed service
@@ -93,7 +91,7 @@ validate_https_accessible() {
     svc=$(yq -r '.services | keys | .[0]' /opt/homeserver/configs/helper-services/services.yml 2>/dev/null)
     subdomain=$(yq -r ".services.${svc}.subdomain // \"${svc}\"" /opt/homeserver/configs/helper-services/services.yml 2>/dev/null)
     fqdn="${subdomain}.${INTERNAL_SUBDOMAIN}"
-    curl -sk -o /dev/null -w '%{http_code}' "https://${fqdn}" 2>/dev/null | grep -qE '^(200|301|302)'
+    curl -sk -o /dev/null -w '%{http_code}' --resolve "${fqdn}:443:${SERVER_IP}" "https://${fqdn}" 2>/dev/null | grep -qE '^(200|301|302)'
 }
 
 # Phase 6 checks array (name:function pairs)
