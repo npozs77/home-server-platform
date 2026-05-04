@@ -288,16 +288,24 @@ validate_service() {
     local data_dir="${DATA_BASE}/${svc}"
     local compose="${COMPOSE_DIR}/${svc}/docker-compose.yml"
 
-    _check() { total=$((total+1)); if "$@" 2>/dev/null; then passed=$((passed+1)); print_success "$desc"; else print_error "$desc"; fi; }
+    _check() {
+        local desc="$1"; shift
+        total=$((total+1))
+        if eval "$*" 2>/dev/null; then
+            passed=$((passed+1)); print_success "$desc"
+        else
+            print_error "$desc"
+        fi
+    }
 
-    desc="Container '${svc}' running"; _check docker inspect -f '{{.State.Running}}' "$svc" | grep -q true
-    desc="Data directory exists"; _check test -d "$data_dir"
-    desc="Compose file exists"; _check test -f "$compose"
+    _check "Container '${svc}' running" "docker inspect -f '{{.State.Running}}' '${svc}' | grep -q true"
+    _check "Data directory exists" "test -d '${data_dir}'"
+    _check "Compose file exists" "test -f '${compose}'"
     if [[ "$no_proxy" != "true" ]]; then
         local fqdn="${subdomain}.${INTERNAL_SUBDOMAIN}"
-        desc="DNS resolves ${fqdn}"; _check dig +short "@127.0.0.1" "$fqdn" | grep -q "$SERVER_IP"
-        desc="Caddy entry exists"; _check caddy_entry_exists "$svc"
-        desc="HTTPS accessible"; _check curl -sk -o /dev/null -w '%{http_code}' "https://${fqdn}" | grep -qE '^(200|301|302)'
+        _check "DNS resolves ${fqdn}" "dig +short '@127.0.0.1' '${fqdn}' | grep -q '${SERVER_IP}'"
+        _check "Caddy entry exists" "caddy_entry_exists '${svc}'"
+        _check "HTTPS accessible" "curl -sk -o /dev/null -w '%{http_code}' 'https://${fqdn}' | grep -qE '^(200|301|302)'"
     fi
     echo "${passed} / ${total} checks passed"
     [[ "$passed" -eq "$total" ]]
