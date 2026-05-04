@@ -173,6 +173,55 @@ test_dispatcher_default_usage
 test_task_modules_exist
 
 echo ""
+echo "Test 15: Issue #7 fixes — code-level verification"
+echo "----------------------------------------"
+
+# Data dir uses chmod 777 (not root:root)
+TESTS_RUN=$((TESTS_RUN + 1))
+if grep -q 'chmod 777' scripts/docker-helper/lib/service-ops.sh && ! grep -q 'chown root:root' scripts/docker-helper/lib/service-ops.sh; then
+    print_pass "Data dir uses chmod 777, no chown root:root"
+else
+    print_fail "Data dir should use chmod 777 without chown root:root"
+fi
+
+# Idempotent add — conflict check skips when compose file exists
+TESTS_RUN=$((TESTS_RUN + 1))
+if grep -q 'COMPOSE_DIR.*docker-compose.yml' scripts/docker-helper/lib/service-ops.sh | head -1 && grep -A2 'conflicts with existing container' scripts/docker-helper/lib/service-ops.sh | grep -q 'COMPOSE_DIR'; then
+    print_pass "Conflict check skips helper-managed containers"
+else
+    # Simpler check: the conflict block references COMPOSE_DIR
+    if grep -B3 'conflicts with existing container' scripts/docker-helper/lib/service-ops.sh | grep -q 'COMPOSE_DIR'; then
+        print_pass "Conflict check skips helper-managed containers"
+    else
+        print_fail "Conflict check should skip when compose file exists"
+    fi
+fi
+
+# validate_service uses eval-based _check (not broken pipe pattern)
+TESTS_RUN=$((TESTS_RUN + 1))
+if grep -A3 '_check()' scripts/docker-helper/lib/service-ops.sh | grep -q 'eval'; then
+    print_pass "validate_service _check uses eval for pipe support"
+else
+    print_fail "validate_service _check should use eval"
+fi
+
+# HTTPS check uses --resolve in both service-ops and validation-utils
+TESTS_RUN=$((TESTS_RUN + 1))
+if grep -q '\-\-resolve' scripts/docker-helper/lib/service-ops.sh && grep -q '\-\-resolve' scripts/operations/utils/validation-docker-helper-utils.sh; then
+    print_pass "HTTPS checks use --resolve in both scripts"
+else
+    print_fail "HTTPS checks should use --resolve to bypass system DNS"
+fi
+
+# Validation-utils checks for backup-helper-services.sh (not per-service scripts)
+TESTS_RUN=$((TESTS_RUN + 1))
+if grep -q 'backup-helper-services.sh' scripts/operations/utils/validation-docker-helper-utils.sh && ! grep -q 'backup-\${svc}.sh' scripts/operations/utils/validation-docker-helper-utils.sh; then
+    print_pass "Validation checks backup-helper-services.sh (not per-service)"
+else
+    print_fail "Validation should check backup-helper-services.sh"
+fi
+
+echo ""
 echo "========================================"
 echo "Results: $TESTS_PASSED/$TESTS_RUN passed, $TESTS_FAILED failed"
 echo "========================================"
