@@ -17,9 +17,6 @@ readonly SERVICE_OPS_LOADED=1
 readonly _SO_ERR_GENERAL=1 _SO_ERR_USAGE=2 _SO_ERR_CONFIG=3
 readonly _SO_ERR_VALIDATION=4 _SO_ERR_CONFLICT=5
 
-# Pi-hole custom.list lives on the host via volume mount (not /etc/pihole on host)
-readonly _PIHOLE_CUSTOM_LIST="/opt/homeserver/configs/pihole/etc-pihole/custom.list"
-
 # ---------------------------------------------------------------------------
 # YAML reading functions (via yq)
 # ---------------------------------------------------------------------------
@@ -131,49 +128,96 @@ remove_caddy_entry() {
 }
 
 # ---------------------------------------------------------------------------
-# Pi-hole DNS management (Req 4.1–4.5)
+# Pi-hole DNS management — Pi-hole v6 via pihole-FTL --config dns.hosts
+# (Req 4.1–4.5)
 # ---------------------------------------------------------------------------
 
 dns_record_exists() {
     local fqdn="${1}.${INTERNAL_SUBDOMAIN}"
-    grep -q "$fqdn" "$_PIHOLE_CUSTOM_LIST" 2>/dev/null
+    local current
+    current=$(docker exec pihole pihole-FTL --config dns.hosts 2>/dev/null || echo "[]")
+    echo "$current" | grep -q "$fqdn"
 }
 
 add_dns_record() {
     local subdomain="$1" dry_run="${2:-false}"
     local fqdn="${subdomain}.${INTERNAL_SUBDOMAIN}"
-    if [[ ! -f "$_PIHOLE_CUSTOM_LIST" ]]; then
-        print_error "Pi-hole custom.list not found at ${_PIHOLE_CUSTOM_LIST} — is Pi-hole deployed?"
-        return "$_SO_ERR_GENERAL"
+    local dns_record="${SERVER_IP} ${fqdn}"
+
+    if ! docker ps --format '{{.Names}}' | grep -q '^pihole$'; then
+        print_error "Pi-hole container is not running"; return "$_SO_ERR_GENERAL"
     fi
     if dns_record_exists "$subdomain"; then print_info "DNS record for '${fqdn}' already exists — skipping"; return 0; fi
     if [[ "$dry_run" == "true" ]]; then
-        print_info "[dry-run] Would add DNS record: ${SERVER_IP} ${fqdn}"; return 0
+        print_info "[dry-run] Would add DNS record: ${dns_record}"; return 0
     fi
-    cp "$_PIHOLE_CUSTOM_LIST" "${_PIHOLE_CUSTOM_LIST}.bak"
-    echo "${SERVER_IP} ${fqdn}" >> "$_PIHOLE_CUSTOM_LIST"
-    if ! docker exec pihole pihole restartdns 2>/dev/null; then
-        cp "${_PIHOLE_CUSTOM_LIST}.bak" "$_PIHOLE_CUSTOM_LIST"
-        print_error "Pi-hole DNS restart failed — reverted"; return "$_SO_ERR_GENERAL"
+
+    # Read current entries, build new JSON array
+    local current_json
+    current_json=$(docker exec pihole pihole-FTL --config dns.hosts 2>/dev/null || echo "[]")
+    local entries=()
+    while IFS= read -r entry; do
+        entry=$(echo "$entry" | sed 's/^[[:space:]]*"//;s/"[[:space:]]*$//')
+        [[ -n "$entry" ]] && entries+=("$entry")
+    done < <(echo "$current_json" | tr ',' '\n' | sed 's/[][]//g')
+    entries+=("$dns_record")
+
+    # Build JSON array
+    local new_json="["
+    for ((i=0; i<${#entries[@]}; i++)); do
+        [[ $i -gt 0 ]] && new_json+=","
+        new_json+="\"${entries[$i]}\""
+    done
+    new_json+="]"
+
+    if docker exec pihole pihole-FTL --config dns.hosts "$new_json" 2>/dev/null; then
+        print_success "Added DNS record: ${dns_record}"
+    else
+        print_error "Failed to update Pi-hole dns.hosts"; return "$_SO_ERR_GENERAL"
     fi
-    print_success "Added DNS record: ${SERVER_IP} ${fqdn}"
+
+    # Restart pihole for FTL to pick up new records
+    docker restart pihole >/dev/null 2>&1
+    sleep 3
 }
 
 remove_dns_record() {
     local subdomain="$1" dry_run="${2:-false}"
     local fqdn="${subdomain}.${INTERNAL_SUBDOMAIN}"
+
+    if ! docker ps --format '{{.Names}}' | grep -q '^pihole$'; then
+        print_error "Pi-hole container is not running"; return "$_SO_ERR_GENERAL"
+    fi
     if ! dns_record_exists "$subdomain"; then print_info "No DNS record for '${fqdn}' — skipping"; return 0; fi
     if [[ "$dry_run" == "true" ]]; then
         print_info "[dry-run] Would remove DNS record for ${fqdn}"; return 0
     fi
-    cp "$_PIHOLE_CUSTOM_LIST" "${_PIHOLE_CUSTOM_LIST}.bak"
-    grep -v "$fqdn" "$_PIHOLE_CUSTOM_LIST" > "${_PIHOLE_CUSTOM_LIST}.tmp"
-    mv "${_PIHOLE_CUSTOM_LIST}.tmp" "$_PIHOLE_CUSTOM_LIST"
-    if ! docker exec pihole pihole restartdns 2>/dev/null; then
-        cp "${_PIHOLE_CUSTOM_LIST}.bak" "$_PIHOLE_CUSTOM_LIST"
-        print_error "Pi-hole DNS restart failed — reverted"; return "$_SO_ERR_GENERAL"
+
+    # Read current entries, filter out the target
+    local current_json
+    current_json=$(docker exec pihole pihole-FTL --config dns.hosts 2>/dev/null || echo "[]")
+    local entries=()
+    while IFS= read -r entry; do
+        entry=$(echo "$entry" | sed 's/^[[:space:]]*"//;s/"[[:space:]]*$//')
+        [[ -n "$entry" ]] && ! echo "$entry" | grep -q "$fqdn" && entries+=("$entry")
+    done < <(echo "$current_json" | tr ',' '\n' | sed 's/[][]//g')
+
+    # Build JSON array
+    local new_json="["
+    for ((i=0; i<${#entries[@]}; i++)); do
+        [[ $i -gt 0 ]] && new_json+=","
+        new_json+="\"${entries[$i]}\""
+    done
+    new_json+="]"
+
+    if docker exec pihole pihole-FTL --config dns.hosts "$new_json" 2>/dev/null; then
+        print_success "Removed DNS record for ${fqdn}"
+    else
+        print_error "Failed to update Pi-hole dns.hosts"; return "$_SO_ERR_GENERAL"
     fi
-    print_success "Removed DNS record for ${fqdn}"
+
+    docker restart pihole >/dev/null 2>&1
+    sleep 3
 }
 
 # ---------------------------------------------------------------------------
