@@ -39,6 +39,7 @@ fi
 
 readonly _FOUNDATION_ENV="/opt/homeserver/configs/foundation.env"
 readonly _SERVICES_ENV="/opt/homeserver/configs/services.env"
+readonly _SECRETS_ENV="/opt/homeserver/configs/secrets.env"
 
 if [[ -f "$_FOUNDATION_ENV" ]]; then
     # shellcheck disable=SC1090
@@ -51,6 +52,16 @@ fi
 if [[ -f "$_SERVICES_ENV" ]]; then
     # shellcheck disable=SC1090
     source "$_SERVICES_ENV"
+fi
+
+# Source secrets.env safely (values may contain shell-special chars)
+if [[ -f "$_SECRETS_ENV" ]]; then
+    while IFS='=' read -r key value; do
+        [[ -z "$key" || "$key" =~ ^# ]] && continue
+        value="${value#\"}" ; value="${value%\"}"
+        value="${value#\'}" ; value="${value%\'}"
+        export "$key=$value"
+    done < <(grep -v '^\s*#' "$_SECRETS_ENV" | grep -v '^\s*$' | grep '=')
 fi
 
 # ---------------------------------------------------------------------------
