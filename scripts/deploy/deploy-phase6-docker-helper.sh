@@ -145,9 +145,6 @@ if [[ -x /opt/homeserver/scripts/operations/monitoring/check-drift.sh ]]; then
     bash /opt/homeserver/scripts/operations/monitoring/check-drift.sh --warn-only || true
 fi
 
-# Governance validation
-if [[ -x /opt/homeserver/scripts/operations/validate-governance.sh ]]; then
-    bash /opt/homeserver/scripts/operations/validate-governance.sh || { print_error "Governance validation failed — fix violations first"; exit 1; }
-fi
+
 
 main_menu

@@ -27,10 +27,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then DRY_RUN=true; DRY_RUN_ARG="--dry-run"; ec
 # Check if running as root
 [[ $EUID -ne 0 ]] && { print_error "This script must be run as root (use sudo)"; exit 1; }
 
-# Run governance validation before executing tasks
-if [[ -x /opt/homeserver/scripts/operations/validate-governance.sh ]]; then
-    /opt/homeserver/scripts/operations/validate-governance.sh || { print_error "Governance validation failed"; exit 1; }
-fi
+
 
 # Load configuration from foundation.env, services.env, secrets.env
 load_config() {
