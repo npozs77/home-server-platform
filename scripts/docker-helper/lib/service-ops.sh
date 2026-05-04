@@ -305,7 +305,7 @@ validate_service() {
         local fqdn="${subdomain}.${INTERNAL_SUBDOMAIN}"
         _check "DNS resolves ${fqdn}" "dig +short '@127.0.0.1' '${fqdn}' | grep -q '${SERVER_IP}'"
         _check "Caddy entry exists" "caddy_entry_exists '${svc}'"
-        _check "HTTPS accessible" "curl -sk -o /dev/null -w '%{http_code}' 'https://${fqdn}' | grep -qE '^(200|301|302)'"
+        _check "HTTPS accessible" "curl -sk -o /dev/null -w '%{http_code}' --resolve '${fqdn}:443:${SERVER_IP}' 'https://${fqdn}' | grep -qE '^(200|301|302)'"
     fi
     echo "${passed} / ${total} checks passed"
     [[ "$passed" -eq "$total" ]]
