@@ -17,6 +17,9 @@ readonly SERVICE_OPS_LOADED=1
 readonly _SO_ERR_GENERAL=1 _SO_ERR_USAGE=2 _SO_ERR_CONFIG=3
 readonly _SO_ERR_VALIDATION=4 _SO_ERR_CONFLICT=5
 
+# Pi-hole custom.list lives on the host via volume mount (not /etc/pihole on host)
+readonly _PIHOLE_CUSTOM_LIST="/opt/homeserver/configs/pihole/etc-pihole/custom.list"
+
 # ---------------------------------------------------------------------------
 # YAML reading functions (via yq)
 # ---------------------------------------------------------------------------
@@ -133,25 +136,24 @@ remove_caddy_entry() {
 
 dns_record_exists() {
     local fqdn="${1}.${INTERNAL_SUBDOMAIN}"
-    grep -q "$fqdn" /etc/pihole/custom.list 2>/dev/null
+    grep -q "$fqdn" "$_PIHOLE_CUSTOM_LIST" 2>/dev/null
 }
 
 add_dns_record() {
     local subdomain="$1" dry_run="${2:-false}"
     local fqdn="${subdomain}.${INTERNAL_SUBDOMAIN}"
-    local dns_file="/etc/pihole/custom.list"
-    if [[ ! -f "$dns_file" ]]; then
-        print_error "Pi-hole custom.list not found at ${dns_file} — is Pi-hole deployed?"
+    if [[ ! -f "$_PIHOLE_CUSTOM_LIST" ]]; then
+        print_error "Pi-hole custom.list not found at ${_PIHOLE_CUSTOM_LIST} — is Pi-hole deployed?"
         return "$_SO_ERR_GENERAL"
     fi
     if dns_record_exists "$subdomain"; then print_info "DNS record for '${fqdn}' already exists — skipping"; return 0; fi
     if [[ "$dry_run" == "true" ]]; then
         print_info "[dry-run] Would add DNS record: ${SERVER_IP} ${fqdn}"; return 0
     fi
-    cp "$dns_file" "${dns_file}.bak"
-    echo "${SERVER_IP} ${fqdn}" >> "$dns_file"
+    cp "$_PIHOLE_CUSTOM_LIST" "${_PIHOLE_CUSTOM_LIST}.bak"
+    echo "${SERVER_IP} ${fqdn}" >> "$_PIHOLE_CUSTOM_LIST"
     if ! docker exec pihole pihole restartdns 2>/dev/null; then
-        cp "${dns_file}.bak" "$dns_file"
+        cp "${_PIHOLE_CUSTOM_LIST}.bak" "$_PIHOLE_CUSTOM_LIST"
         print_error "Pi-hole DNS restart failed — reverted"; return "$_SO_ERR_GENERAL"
     fi
     print_success "Added DNS record: ${SERVER_IP} ${fqdn}"
@@ -164,11 +166,11 @@ remove_dns_record() {
     if [[ "$dry_run" == "true" ]]; then
         print_info "[dry-run] Would remove DNS record for ${fqdn}"; return 0
     fi
-    cp /etc/pihole/custom.list /etc/pihole/custom.list.bak
-    grep -v "$fqdn" /etc/pihole/custom.list > /etc/pihole/custom.list.tmp
-    mv /etc/pihole/custom.list.tmp /etc/pihole/custom.list
+    cp "$_PIHOLE_CUSTOM_LIST" "${_PIHOLE_CUSTOM_LIST}.bak"
+    grep -v "$fqdn" "$_PIHOLE_CUSTOM_LIST" > "${_PIHOLE_CUSTOM_LIST}.tmp"
+    mv "${_PIHOLE_CUSTOM_LIST}.tmp" "$_PIHOLE_CUSTOM_LIST"
     if ! docker exec pihole pihole restartdns 2>/dev/null; then
-        cp /etc/pihole/custom.list.bak /etc/pihole/custom.list
+        cp "${_PIHOLE_CUSTOM_LIST}.bak" "$_PIHOLE_CUSTOM_LIST"
         print_error "Pi-hole DNS restart failed — reverted"; return "$_SO_ERR_GENERAL"
     fi
     print_success "Removed DNS record for ${fqdn}"
