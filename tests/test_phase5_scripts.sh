@@ -122,8 +122,8 @@ test_task_module_delegation() {
 }
 
 test_governance_validation() {
-    run_test "Deployment script runs governance validation"
-    grep -q "validate-governance.sh" "$DEPLOY_SCRIPT" && print_pass "Governance validation present" || print_fail "Governance validation missing"
+    run_test "Deployment script does NOT run governance validation (CI-only concern)"
+    ! grep -q "validate-governance.sh" "$DEPLOY_SCRIPT" && print_pass "Governance validation correctly absent" || print_fail "Governance validation should not be in deploy script"
 }
 
 # --- services.env.example Tests ---
