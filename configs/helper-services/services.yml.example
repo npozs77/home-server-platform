@@ -4,6 +4,10 @@
 #
 # Required fields: name, image (or build), port (unless no_proxy: true)
 # All other fields have sensible defaults
+#
+# Optional fields:
+#   run_as: "uid:gid"  — Container user + data dir ownership (find with: docker exec <name> id)
+#                         If omitted, data dir gets chmod 777 (any UID can write)
 
 services:
   # Image-based, proxied, public visibility
@@ -13,6 +17,7 @@ services:
     port: 8080
     visibility: public
     subdomain: vocab
+    run_as: "100:101"
     environment:
       NODE_ENV: "production"
     memory_limit: "512M"

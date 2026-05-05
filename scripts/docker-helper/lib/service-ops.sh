@@ -229,21 +229,30 @@ remove_dns_record() {
 create_data_directory() {
     local svc="$1" dry_run="${2:-false}"
     local data_dir="${DATA_BASE}/${svc}"
+    local run_as=$(_so_field "$svc" "run_as")
     if [[ -d "$data_dir" ]]; then
+        # Fix ownership if run_as is specified (handles pre-existing dirs)
+        if [[ -n "$run_as" ]] && [[ "$dry_run" != "true" ]]; then
+            chown -R "$run_as" "$data_dir"
+            print_info "Fixed ownership of ${data_dir} to ${run_as}"
+        fi
         print_info "Data directory already exists: ${data_dir} (preserving existing data)"; return 0
     fi
     if [[ "$dry_run" == "true" ]]; then
         print_info "[dry-run] Would create ${data_dir}"; return 0
     fi
     mkdir -p "$data_dir"
-    # Use permissive mode so any container UID can write (containers run as
-    # various non-root users — e.g. vocabgen runs as UID 65532)
-    chmod 777 "$data_dir"
     # Create subdirectories from volume mappings
     while IFS= read -r vol; do
         local host_path="${vol%%:*}"
         [[ "$host_path" == "${data_dir}"* ]] && mkdir -p "$host_path"
     done < <(yq -r ".services.${svc}.volumes[]? // \"\"" "$SERVICES_CONFIG" | grep -v '^$')
+    # Set ownership: use run_as if specified, otherwise chmod 777 for any UID
+    if [[ -n "$run_as" ]]; then
+        chown -R "$run_as" "$data_dir"
+    else
+        chmod 777 "$data_dir"
+    fi
     print_success "Created data directory: ${data_dir}"
 }
 

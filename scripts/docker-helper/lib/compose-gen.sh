@@ -56,6 +56,12 @@ EOF
         printf '    ports:\n      - "%s:%s"\n' "$port" "$port" >> "$tmp"
     fi
 
+    # User (run_as field → Docker user directive)
+    local run_as=$(yq -r "${s}.run_as // \"\"" "$cfg")
+    if [[ -n "$run_as" ]]; then
+        echo "    user: \"${run_as}\"" >> "$tmp"
+    fi
+
     # Environment (TZ always included)
     echo "    environment:" >> "$tmp"
     echo "      TZ: \"${tz}\"" >> "$tmp"
