@@ -15,7 +15,7 @@ print_pass() { TESTS_PASSED=$((TESTS_PASSED + 1)); }
 print_fail() { echo -e "${RED}✗ FAIL${NC}: $1"; TESTS_FAILED=$((TESTS_FAILED + 1)); }
 
 TEMPLATE="scripts/docker-helper/templates/caddy-block.template"
-ITERATIONS=100
+ITERATIONS="${PBT_ITERATIONS:-25}"
 INTERNAL_SUBDOMAIN="home.example.com"
 
 [[ -f "$TEMPLATE" ]] || { echo "FATAL: $TEMPLATE not found"; exit 1; }

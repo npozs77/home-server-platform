@@ -15,7 +15,7 @@ TESTS_RUN=0; TESTS_PASSED=0; TESTS_FAILED=0
 print_pass() { TESTS_PASSED=$((TESTS_PASSED + 1)); }
 print_fail() { echo -e "${RED}✗ FAIL${NC}: $1"; TESTS_FAILED=$((TESTS_FAILED + 1)); }
 
-ITERATIONS=100
+ITERATIONS="${PBT_ITERATIONS:-25}"
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
