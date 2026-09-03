@@ -85,8 +85,40 @@ backup_service() {
     local pre_out; pre_out=$(yq -r ".services.${svc}.backup.pre_command_output // \"\"" "$SERVICES_CONFIG")
 
     if [[ -n "$pre_cmd" ]]; then
+        # A pre_command is typically a `docker exec <container> …` snapshot step
+        # (e.g. sqlite3 .backup). If that container is not running we skip the
+        # pre_command with a clear WARN instead of letting `eval` fail with a
+        # cryptic docker error. We deliberately CONTINUE to the rsync below: the
+        # live data dir (including the DB file) is still worth backing up, just
+        # without the consistent pre-snapshot. This mirrors backup-wiki-llm.sh,
+        # which skips pg_dump on a down DB but still rsyncs. See the
+        # down-container policy note in docs/12-runbooks.md.
+        # Identify the container ONLY for the simple, unambiguous form
+        # `docker exec <container> …` (the word immediately after `exec` is not
+        # a flag). We deliberately do NOT try to parse flag forms like
+        # `docker exec -u postgres <container>` — guessing there risks inspecting
+        # the wrong name, so in that case we skip the up-check and just run the
+        # pre_command as before (today's behaviour). The repo's pre_commands use
+        # the simple form.
+        local pre_container=""
+        if [[ "$pre_cmd" =~ docker[[:space:]]+exec[[:space:]]+([^-][^[:space:]]*) ]]; then
+            pre_container="${BASH_REMATCH[1]}"
+        fi
+
+        local skip_pre=false
+        if [[ -n "$pre_container" ]]; then
+            local pre_state
+            pre_state=$(docker inspect --format='{{.State.Status}}' "$pre_container" 2>/dev/null || echo "absent")
+            if [[ "$pre_state" != "running" ]]; then
+                log_msg "WARN" "$SCRIPT_NAME" "${svc}: pre_command container ${pre_container} is ${pre_state} — skipping snapshot, backing up data dir as-is"
+                skip_pre=true
+            fi
+        fi
+
         if $DRY_RUN; then
             log_msg "INFO" "$SCRIPT_NAME" "${svc}: dry-run — would run pre_command: ${pre_cmd}"
+        elif $skip_pre; then
+            : # container down — WARN already logged, fall through to rsync
         else
             log_msg "INFO" "$SCRIPT_NAME" "${svc}: running pre_command"
             if eval "$pre_cmd" > "${data_dir}/${pre_out}" 2>&1; then

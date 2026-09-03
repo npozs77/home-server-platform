@@ -244,3 +244,32 @@ This is why you must:
 - scripts/backup/backup-configs.sh (backs up header files to DAS)
 
 ---
+
+## Down-Container Policy (scheduled jobs)
+
+When a scheduled job needs a container that is not running (deploy, reboot,
+crash), behaviour depends on the job's purpose. The rule:
+
+> **Maintenance jobs skip cleanly. Backups still capture what they can and
+> report anything they had to skip.**
+
+| Script | Container | Down → behaviour | Rationale |
+|--------|-----------|------------------|-----------|
+| `REDACTED` | REDACTED | skip, exit 0 | A missed price top-up during a reboot is a no-op; the next run catches up. |
+| `backup-immich.sh` | immich-postgres | hard fail, exit 3 + alert | No DB dump = no usable Immich backup; you want to know now. |
+| `backup-wiki-llm.sh` | wiki-db | skip `pg_dump` (WARN), continue rsync | Filesystem content is still worth backing up without the DB dump. |
+| `backup-helper-services.sh` | pre_command target | skip pre_command (WARN), continue rsync | The live data dir (incl. the DB file) is still backed up; only the consistent snapshot is skipped. |
+
+**Why they differ:** for `backup-immich`, the database *is* the backup — a
+filesystem copy without a `pg_dump` is not restorable, so a down container is a
+reportable failure. For `backup-wiki-llm` and `backup-helper-services`, the data
+dir on disk is independently useful, so a down container degrades the backup
+(no consistent snapshot) rather than voiding it — skip the snapshot step, log a
+WARN, and still rsync. `REDACTED` is pure maintenance, so a down
+container is simply nothing to do.
+
+**Implication:** a WARN in `backup-helper-services.log` about a skipped
+pre_command snapshot means the data dir was still backed up, but without a
+quiesced snapshot. If you need a consistent snapshot, ensure the container is
+running and re-run the backup for that service:
+`sudo bash /opt/homeserver/scripts/backup/backup-helper-services.sh <service>`.
