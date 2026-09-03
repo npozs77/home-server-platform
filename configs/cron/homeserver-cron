@@ -16,3 +16,9 @@
 
 # Daily drift check at 08:00 (detects server divergence from origin)
 0 8 * * * root /opt/homeserver/scripts/operations/monitoring/check-drift.sh >> /var/log/homeserver/drift-check.log 2>&1
+
+# REDACTED investment price fetch — weekly (Fri 20:00) keeps LU-fund history
+# continuous (FT source only exposes ~1 month); monthly (1st 20:00) safely
+# captures the prior month's final trading day.
+0 20 * * 5 root /opt/homeserver/scripts/operations/REDACTED >> /var/log/homeserver/REDACTED 2>&1
+0 20 1 * * root /opt/homeserver/scripts/operations/REDACTED >> /var/log/homeserver/REDACTED 2>&1
