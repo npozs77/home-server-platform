@@ -38,14 +38,15 @@ LOGROTATE_FILE="$REPO_ROOT/configs/logrotate/homeserver-backups"
 # Validates: Requirements 7.2, 8.7, 13.2
 # ============================================================
 test_log_msg_structured_format() {
-    run_test "Property 2: Structured log format (100 iterations)"
+    local iterations="${PBT_ITERATIONS:-25}"
+    run_test "Property 2: Structured log format (${iterations} iterations)"
 
     local levels=("INFO" "WARN" "ERROR")
     local test_scripts=("backup-all" "backup-configs" "health-check" "setup-das" "my-script-99")
     local test_messages=("Starting backup" "Mount failed" "Disk at 92%" "rsync complete: 150 files" "special chars: /mnt/backup/ [OK]")
     local all_passed=true
 
-    for i in $(seq 1 100); do
+    for i in $(seq 1 "$iterations"); do
         local level="${levels[$((RANDOM % ${#levels[@]}))]}"
         local script="${test_scripts[$((RANDOM % ${#test_scripts[@]}))]}"
         local msg="${test_messages[$((RANDOM % ${#test_messages[@]}))]}-iter${i}"

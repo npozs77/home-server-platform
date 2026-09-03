@@ -128,6 +128,34 @@ check_safety_flags() {
     fi
 }
 
+check_executable_bits() {
+    # Every tracked *.sh under scripts/ must carry the git executable bit (100755).
+    # This machine may have core.filemode=false, which makes `git add` silently
+    # record new scripts as 100644 even when the working tree marks them +x. On
+    # the server (git-pull deploy model) such a file lands non-executable and any
+    # cron/direct invocation by path fails with "permission denied". This check
+    # catches that class of breakage before it ships.
+    if ! command -v git &>/dev/null || ! git -C "$REPO_ROOT" rev-parse --git-dir &>/dev/null; then
+        print_info "Executable bits: not a git checkout — skipping"
+        return 0
+    fi
+
+    local non_exec
+    non_exec=$(git -C "$REPO_ROOT" ls-files -s -- 'scripts/*.sh' | awk '$1 == "100644" {print $4}')
+
+    if [[ -z "$non_exec" ]]; then
+        print_pass "Executable bits: all tracked scripts/*.sh are executable (100755)"
+        return 0
+    fi
+
+    print_fail "Executable bits: the following tracked scripts are NOT executable (100644)"
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        echo "    ${f}  → fix: git update-index --chmod=+x ${f}"
+    done <<< "$non_exec"
+    return 0  # Don't exit early, continue validation
+}
+
 check_test_exists() {
     local file="$1"
     local description="$2"
@@ -216,7 +244,12 @@ main() {
         fi
     done
     echo ""
-    
+
+    # Check executable bits on all tracked shell scripts
+    print_header "Executable Bits (tracked scripts/*.sh)"
+    check_executable_bits || true
+    echo ""
+
     # Summary
     print_header "Governance Validation Summary"
     echo ""

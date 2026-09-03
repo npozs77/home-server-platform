@@ -23,6 +23,7 @@ done
 BACKUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UTILS_DIR="${BACKUP_DIR}/../operations/utils"
 source "${UTILS_DIR}/log-utils.sh"
+source "${UTILS_DIR}/lock-utils.sh"
 
 # Load only foundation.env and services.env (backup orchestrator does not need secrets.env)
 [[ -f /opt/homeserver/configs/foundation.env ]] && source /opt/homeserver/configs/foundation.env
@@ -32,6 +33,12 @@ BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
 
 # Ensure log directory exists
 mkdir -p "$CRON_LOG_DIR" 2>/dev/null || true
+
+# Prevent overlapping runs (rsync --delete + retention purges must not race a
+# second run). One lock covers the child jobs; watchdog.sh probes the same file.
+acquire_lock "/run/backup-all.lock" "$SCRIPT_NAME"; rc=$?
+[[ $rc -eq 2 ]] && exit 2   # cannot open lock file
+[[ $rc -eq 1 ]] && exit 0   # another run in progress — skip cleanly
 
 # Mount guard
 if ! mountpoint -q "$BACKUP_MOUNT"; then
@@ -80,6 +87,7 @@ run_job() {
 run_job "${BACKUP_DIR}/backup-configs.sh" "backup-configs"
 run_job "${BACKUP_DIR}/backup-immich.sh" "backup-immich"
 run_job "${BACKUP_DIR}/backup-wiki-llm.sh" "backup-wiki-llm"
+run_job "${BACKUP_DIR}/backup-helper-services.sh" "backup-helper-services"
 
 # DB dump retention: remove dumps older than 30 days
 if ! $DRY_RUN; then

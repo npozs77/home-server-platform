@@ -1,0 +1,89 @@
+# Helper-managed service definitions
+# Copy to services.yml and customize with real values
+# Location: configs/helper-services/services.yml
+#
+# Required fields: name, image (or build), port (unless no_proxy: true)
+# All other fields have sensible defaults
+#
+# Optional fields:
+#   run_as: "uid:gid"  — Container user + data dir ownership (find with: docker exec <name> id)
+#                         If omitted, data dir gets chmod 777 (any UID can write)
+
+services:
+  # Image-based, proxied, public visibility
+  vocabgen:
+    name: vocabgen
+    image: ghcr.io/npozs77/vocabgen:latest
+    port: 8080
+    visibility: public
+    subdomain: vocab
+    environment:
+      NODE_ENV: "production"
+      VOCABGEN_API_KEY: "${VOCABGEN_API_KEY}"
+      VOCABGEN_API_KEY_NAME: "mcp-server"
+      VOCABGEN_API_KEY_SCOPE: "read-only"
+    memory_limit: "512M"
+    cpu_limit: "1.0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Build-from-source, with backup block and pre_command
+  musivault:
+    name: musivault
+    build:
+      context: "https://github.com/Jeanball/Musivault.git"
+      dockerfile: Dockerfile
+    image: musivault:latest
+    port: 3000
+    visibility: private
+    environment:
+      MUSIC_DIR: "/music"
+    memory_limit: "1G"
+    cpu_limit: "2.0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Non-HTTP background worker (no_proxy, host port)
+  my-worker:
+    name: my-worker
+    image: myworker:latest
+    no_proxy: true
+    port: 9090
+    visibility: private
+    environment:
+      WORKER_MODE: "background"
+    memory_limit: "256M"
+    cpu_limit: "0.5"
+
+  # Multi-container with database sidecar
+  my-app:
+    name: my-app
+    image: myapp:latest
+    port: 5000
+    visibility: private
+    depends_on:
+      - my-app-db
+    extra_containers:
+      - name: my-app-db
+        image: postgres:15-alpine
+        environment:
+          POSTGRES_USER: myapp
+          POSTGRES_PASSWORD: "${MYAPP_DB_PASSWORD}"
+          POSTGRES_DB: myapp
+        volumes:
+          - /mnt/data/services/my-app/postgres:/var/lib/postgresql/data
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U myapp"]
+          interval: 10s
+          timeout: 5s
+          retries: 5
+    environment:
+      DATABASE_URL: "postgres://myapp:${MYAPP_DB_PASSWORD}@my-app-db:5432/myapp"
+    memory_limit: "512M"
+    cpu_limit: "1.0"

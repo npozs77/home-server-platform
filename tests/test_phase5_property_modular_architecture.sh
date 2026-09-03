@@ -284,18 +284,18 @@ else
 fi
 
 # ============================================================
-# 13g: Governance validation before task execution
+# 13g: Governance validation is CI-only (not in deploy scripts)
 # ============================================================
 
 echo ""
-echo "--- 13g: Governance validation ---"
+echo "--- 13g: Governance validation (CI-only, not in deploy) ---"
 echo ""
 
 TESTS_RUN=$((TESTS_RUN + 1))
 if echo "$ORCH_CONTENT" | grep -q "validate-governance.sh"; then
-    print_pass "Orchestration runs governance validation before executing tasks"
+    print_fail "Orchestration should NOT run governance validation (CI-only concern)"
 else
-    print_fail "Orchestration MISSING governance validation (validate-governance.sh)"
+    print_pass "Governance validation correctly absent from deploy script"
 fi
 
 # --- Summary ---

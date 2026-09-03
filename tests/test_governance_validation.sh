@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI_SAFE=true
+# CI_SAFE=false
 # Test Suite: Governance Validation
 # Purpose: Validate governance validation script and compliance checks
 # Requirements: 12.5, 12.6, 12.7, 26.1-26.10

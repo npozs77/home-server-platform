@@ -67,6 +67,7 @@ source "${UTILS_DIR}/validation-infrastructure-utils.sh"    # → PHASE2_CHECKS
 source "${UTILS_DIR}/validation-core-services-utils.sh"     # → PHASE3_CHECKS
 source "${UTILS_DIR}/validation-photo-management-utils.sh"  # → PHASE4_CHECKS
 source "${UTILS_DIR}/validation-wiki-llm-utils.sh"         # → PHASE5_CHECKS
+source "${UTILS_DIR}/validation-docker-helper-utils.sh"    # → PHASE6_CHECKS
 
 # Counters
 GRAND_TOTAL=0
@@ -125,6 +126,7 @@ if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "2" ]]; then run_phase 2 "Infrast
 if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "3" ]]; then run_phase 3 "Core Services"     "${PHASE3_CHECKS[@]}"; fi
 if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "4" ]]; then run_phase 4 "Photo Management"  "${PHASE4_CHECKS[@]}"; fi
 if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "5" ]]; then run_phase 5 "Wiki & LLM"       "${PHASE5_CHECKS[@]}"; fi
+if [[ -z "$PHASE_FILTER" || "$PHASE_FILTER" == "6" ]]; then run_phase 6 "Docker Helper"    "${PHASE6_CHECKS[@]}"; fi
 
 # ── Summary ──
 echo ""

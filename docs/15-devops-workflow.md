@@ -51,15 +51,22 @@ Developer pushes → Private Repo → CI validates → CI mirrors to Public Repo
 
 ## Git-Pull Deployment
 
-The server uses `git pull` instead of SCP for deployments:
+The server converges to origin instead of using SCP for deployments:
 
 1. Develop and test locally
 2. Push to private repo
 3. CI validates (tests + governance)
-4. On server: `bash scripts/operations/utils/deploy-update.sh`
-5. Script runs `git pull origin main` and reports deployed commit
+4. On server: `bash scripts/operations/utils/deploy-update.sh [branch]`
+5. Script does `git fetch` + `git checkout <branch>` + `git reset --hard origin/<branch>`
+   (not a merge/pull), making the server exactly equal the remote, then reports
+   the deployed commit
 
-The server has a read-only deploy key — it can pull but never push.
+This enforces the IaC model: the Git repo is the source of truth and the server
+is a disposable checkout. Local changes on the server are drift — if any are
+present the script warns, shows what would be discarded, and stops until you
+approve removal (interactive confirmation, or `--force` for automation).
+
+The server has a read-only deploy key — it can fetch/pull but never push.
 
 ## Branch-Based Testing on Server
 
@@ -88,7 +95,8 @@ bash scripts/operations/utils/deploy-update.sh main
 
 ### Notes
 
-- The server repo may end up on a detached HEAD or non-main branch — the drift check will flag this, which is expected during testing
+- Drift check is branch-aware: it compares against `origin/{current branch}`, not always `origin/main`
+- A soft warning is included when the server is not on main (reminder to switch back when done)
 - Always return to main after testing: `deploy-update.sh main`
 - The branch must exist on the remote (push before pulling on server)
 
@@ -96,10 +104,11 @@ bash scripts/operations/utils/deploy-update.sh main
 
 The drift check script (`scripts/operations/monitoring/check-drift.sh`) detects when the server diverges from the repo:
 
-- **Commits behind** — server hasn't pulled latest changes
+- **Commits behind** — server hasn't pulled latest changes from `origin/{current branch}`
+- **Non-main branch** — soft warning reminding to return to main when done
 - **Local modifications** — files edited directly on server
 - **Untracked files** — new files in `scripts/` or `configs/` not in repo
-- **Detached HEAD** — server not on `main` branch
+- **Detached HEAD** — server not on any named branch
 
 ### Modes
 

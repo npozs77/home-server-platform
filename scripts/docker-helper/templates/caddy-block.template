@@ -1,0 +1,14 @@
+# BEGIN helper:{{SERVICE_NAME}}
+{{SUBDOMAIN}}.{{INTERNAL_SUBDOMAIN}} {
+    reverse_proxy {{CONTAINER_NAME}}:{{PORT}}
+    tls internal
+    log {
+        output file /var/log/caddy/{{SERVICE_NAME}}-access.log
+    }
+    handle_errors {
+        root * /srv/pages
+        rewrite * /starting.html
+        file_server
+    }
+}
+# END helper:{{SERVICE_NAME}}
