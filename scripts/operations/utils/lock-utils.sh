@@ -12,7 +12,7 @@ readonly LOCK_UTILS_LOADED=1
 # schedule. The lock lives under /run (root-owned tmpfs, cleared on reboot); the
 # held file descriptor is released automatically when the process exits.
 # Parameters: $1=lock file path, $2=script name (for log context)
-# Behaviour (matches the REDACTED/backup-all convention):
+# Behaviour (the convention scheduled jobs follow):
 #   - cannot open lock file        → return 2 (caller should treat as prereq fail)
 #   - another instance holds it     → return 1 (caller should skip cleanly, exit 0)
 #   - acquired                      → return 0

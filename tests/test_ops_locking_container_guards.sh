@@ -3,7 +3,7 @@
 # Test Suite: Operational locking + container-down guards
 # Purpose: Cover the stability behaviours added for scheduled jobs —
 #   1. acquire_lock (lock-utils.sh): real flock acquire/contention + exit-code map
-#   2. backup-all.sh / REDACTED use the shared lock helper
+#   2. backup-all.sh uses the shared lock helper
 #   3. backup-helper-services.sh skips a pre_command when its container is down
 #   4. validate-governance.sh enforces the executable bit on tracked scripts
 # Usage: bash tests/test_ops_locking_container_guards.sh
@@ -21,7 +21,6 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK_UTILS="${REPO_ROOT}/scripts/operations/utils/lock-utils.sh"
 LOG_UTILS="${REPO_ROOT}/scripts/operations/utils/log-utils.sh"
 BACKUP_ALL="${REPO_ROOT}/scripts/backup/backup-all.sh"
-REDACTED="${REPO_ROOT}/scripts/operations/REDACTED"
 HELPER="${REPO_ROOT}/scripts/backup/backup-helper-services.sh"
 GOVERNANCE="${REPO_ROOT}/scripts/operations/validate-governance.sh"
 
@@ -68,13 +67,12 @@ fi
 # ------------------------------------------------------------
 echo ""
 echo "--- lock helper adoption ---"
-for caller in "$BACKUP_ALL" "$REDACTED"; do
-    name=$(basename "$caller")
-    grep -q 'source.*lock-utils\.sh' "$caller" && pass "$name sources lock-utils.sh" || fail "$name does not source lock-utils.sh"
-    grep -q 'acquire_lock' "$caller" && pass "$name calls acquire_lock" || fail "$name does not call acquire_lock"
-    # Must map rc==1 to a clean skip (exit 0), never a hard failure
-    grep -qE 'rc -eq 1.*exit 0' "$caller" && pass "$name skips cleanly (exit 0) on contention" || fail "$name missing clean-skip on contention"
-done
+# backup-all.sh is the public caller of the shared lock helper.
+ba_name=$(basename "$BACKUP_ALL")
+grep -q 'source.*lock-utils\.sh' "$BACKUP_ALL" && pass "$ba_name sources lock-utils.sh" || fail "$ba_name does not source lock-utils.sh"
+grep -q 'acquire_lock' "$BACKUP_ALL" && pass "$ba_name calls acquire_lock" || fail "$ba_name does not call acquire_lock"
+# Must map rc==1 to a clean skip (exit 0), never a hard failure
+grep -qE 'rc -eq 1.*exit 0' "$BACKUP_ALL" && pass "$ba_name skips cleanly (exit 0) on contention" || fail "$ba_name missing clean-skip on contention"
 
 # backup-all.sh must NOT retain a raw inline flock (proves the extraction happened)
 grep -q 'flock -n 9' "$BACKUP_ALL" && fail "backup-all.sh still has inline 'flock -n 9' (should use helper)" || pass "backup-all.sh has no inline flock (uses helper)"
@@ -104,8 +102,8 @@ extract() {
     if [[ "$pre_cmd" =~ docker[[:space:]]+exec[[:space:]]+([^-][^[:space:]]*) ]]; then c="${BASH_REMATCH[1]}"; fi
     printf '%s' "$c"
 }
-[[ "$(extract 'docker exec REDACTED sqlite3 /data/x.db ".backup /data/y.db"')" == "REDACTED" ]] \
-    && pass "extract: simple 'docker exec REDACTED' → REDACTED" || fail "extract: simple form wrong"
+[[ "$(extract 'docker exec myapp sqlite3 /data/x.db ".backup /data/y.db"')" == "myapp" ]] \
+    && pass "extract: simple 'docker exec myapp' → myapp" || fail "extract: simple form wrong"
 [[ "$(extract 'sudo docker exec immich-postgres pg_dump')" == "immich-postgres" ]] \
     && pass "extract: 'sudo docker exec immich-postgres' → immich-postgres" || fail "extract: sudo form wrong"
 [[ -z "$(extract 'docker exec -u postgres mydb pg_dump')" ]] \

@@ -255,7 +255,7 @@ crash), behaviour depends on the job's purpose. The rule:
 
 | Script | Container | Down → behaviour | Rationale |
 |--------|-----------|------------------|-----------|
-| `REDACTED` | REDACTED | skip, exit 0 | A missed price top-up during a reboot is a no-op; the next run catches up. |
+| scheduled maintenance job | (app container) | skip, exit 0 | A missed periodic top-up during a reboot is a no-op; the next run catches up. |
 | `backup-immich.sh` | immich-postgres | hard fail, exit 3 + alert | No DB dump = no usable Immich backup; you want to know now. |
 | `backup-wiki-llm.sh` | wiki-db | skip `pg_dump` (WARN), continue rsync | Filesystem content is still worth backing up without the DB dump. |
 | `backup-helper-services.sh` | pre_command target | skip pre_command (WARN), continue rsync | The live data dir (incl. the DB file) is still backed up; only the consistent snapshot is skipped. |
@@ -265,8 +265,8 @@ filesystem copy without a `pg_dump` is not restorable, so a down container is a
 reportable failure. For `backup-wiki-llm` and `backup-helper-services`, the data
 dir on disk is independently useful, so a down container degrades the backup
 (no consistent snapshot) rather than voiding it — skip the snapshot step, log a
-WARN, and still rsync. `REDACTED` is pure maintenance, so a down
-container is simply nothing to do.
+WARN, and still rsync. A pure maintenance job (e.g. a periodic data top-up) has
+nothing to back up, so a down container is simply nothing to do.
 
 **Implication:** a WARN in `backup-helper-services.log` about a skipped
 pre_command snapshot means the data dir was still backed up, but without a
