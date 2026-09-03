@@ -52,5 +52,7 @@ configs/docker-compose/*/config/
 # Phase 6: Helper-managed service configs (live config with PII, generated compose files)
 configs/helper-services/services.yml
 configs/helper-services/*/
+configs/helper-services/*.bak
+configs/helper-services/*.bak.*
 !configs/helper-services/.gitkeep
 !configs/helper-services/services.yml.example
