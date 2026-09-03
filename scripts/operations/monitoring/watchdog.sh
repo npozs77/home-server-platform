@@ -79,8 +79,14 @@ if grep -q "$SUCCESS_MARKER" "$BACKUP_LOG"; then
     exit 0
 fi
 
-# Check 3: Log exists but no success — backup failed or is still running
-if pgrep -f "backup-all.sh" > /dev/null 2>&1; then
+# Check 3: Log exists but no success — backup failed or is still running.
+# Probe backup-all.sh's lock: if we CANNOT acquire it, a backup is still in
+# progress, so the missing success marker is expected — skip the alert. This
+# is more precise than matching the process name (which also matches manual
+# runs, editors, or greps). The subshell releases the lock immediately on exit,
+# so this probe never blocks a real backup.
+BACKUP_LOCK="/run/backup-all.lock"
+if [[ -e "$BACKUP_LOCK" ]] && ! ( flock -n 9 ) 9>"$BACKUP_LOCK"; then
     log_msg "WARN" "$SCRIPT_NAME" "Backup still running at $(date '+%H:%M') — skipping alert"
     exit 0
 fi

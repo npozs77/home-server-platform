@@ -33,6 +33,22 @@ BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
 # Ensure log directory exists
 mkdir -p "$CRON_LOG_DIR" 2>/dev/null || true
 
+# Prevent overlapping runs. The orchestrator does rsync --delete and destructive
+# retention purges (find … | xargs rm); two concurrent runs (e.g. a manual run
+# during the 02:00 cron) would double-rsync and race the deletes. This single
+# lock also protects the child backup jobs transitively. Lock lives under /run
+# (root-owned tmpfs, cleared on reboot); watchdog.sh probes the same file to
+# tell "still running" from "failed". Contention → clean skip (exit 0).
+LOCK_FILE="/run/backup-all.lock"
+if ! exec 9>"$LOCK_FILE"; then
+    log_msg "ERROR" "$SCRIPT_NAME" "Cannot open lock file ${LOCK_FILE}"
+    exit 2
+fi
+if ! flock -n 9; then
+    log_msg "WARN" "$SCRIPT_NAME" "Another backup run is already in progress — skipping this run"
+    exit 0
+fi
+
 # Mount guard
 if ! mountpoint -q "$BACKUP_MOUNT"; then
     log_msg "ERROR" "$SCRIPT_NAME" "Mount point ${BACKUP_MOUNT} is not mounted"
