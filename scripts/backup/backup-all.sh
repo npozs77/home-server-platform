@@ -23,6 +23,7 @@ done
 BACKUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UTILS_DIR="${BACKUP_DIR}/../operations/utils"
 source "${UTILS_DIR}/log-utils.sh"
+source "${UTILS_DIR}/lock-utils.sh"
 
 # Load only foundation.env and services.env (backup orchestrator does not need secrets.env)
 [[ -f /opt/homeserver/configs/foundation.env ]] && source /opt/homeserver/configs/foundation.env
@@ -33,21 +34,11 @@ BACKUP_MOUNT="${BACKUP_MOUNT:-/mnt/backup}"
 # Ensure log directory exists
 mkdir -p "$CRON_LOG_DIR" 2>/dev/null || true
 
-# Prevent overlapping runs. The orchestrator does rsync --delete and destructive
-# retention purges (find … | xargs rm); two concurrent runs (e.g. a manual run
-# during the 02:00 cron) would double-rsync and race the deletes. This single
-# lock also protects the child backup jobs transitively. Lock lives under /run
-# (root-owned tmpfs, cleared on reboot); watchdog.sh probes the same file to
-# tell "still running" from "failed". Contention → clean skip (exit 0).
-LOCK_FILE="/run/backup-all.lock"
-if ! exec 9>"$LOCK_FILE"; then
-    log_msg "ERROR" "$SCRIPT_NAME" "Cannot open lock file ${LOCK_FILE}"
-    exit 2
-fi
-if ! flock -n 9; then
-    log_msg "WARN" "$SCRIPT_NAME" "Another backup run is already in progress — skipping this run"
-    exit 0
-fi
+# Prevent overlapping runs (rsync --delete + retention purges must not race a
+# second run). One lock covers the child jobs; watchdog.sh probes the same file.
+acquire_lock "/run/backup-all.lock" "$SCRIPT_NAME"; rc=$?
+[[ $rc -eq 2 ]] && exit 2   # cannot open lock file
+[[ $rc -eq 1 ]] && exit 0   # another run in progress — skip cleanly
 
 # Mount guard
 if ! mountpoint -q "$BACKUP_MOUNT"; then
