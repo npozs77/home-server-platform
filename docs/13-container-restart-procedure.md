@@ -67,6 +67,28 @@ docker ps | grep pihole
 # Should show: (healthy) after 60 seconds
 ```
 
+### Helper-Managed Service Restart (Phase 6)
+
+Services deployed via the docker service helper (see
+`docs/16-docker-service-helper.md`) are restarted through the helper, which
+preserves the generated compose file, Caddy block, and DNS record:
+
+```bash
+# Stop / start without changing config
+sudo bash /opt/homeserver/scripts/docker-helper/docker-service-helper.sh stop <name>
+sudo bash /opt/homeserver/scripts/docker-helper/docker-service-helper.sh start <name>
+
+# Full recreate (after image bump or definition change in services.yml)
+sudo bash /opt/homeserver/scripts/docker-helper/docker-service-helper.sh update <name>
+
+# Confirm health
+sudo bash /opt/homeserver/scripts/docker-helper/docker-service-helper.sh validate <name>
+docker ps | grep <name>          # expect (healthy) after ~30s
+```
+
+For multi-container services (with `extra_containers`), `stop`/`start`/`update`
+act on all containers in the group; `depends_on` ordering is preserved.
+
 ### Multiple Container Restart
 
 For restarting multiple containers:

@@ -93,8 +93,8 @@ Data storage organization across two LUKS-encrypted partitions:
 - **Purpose**: Service persistent data
 - **Permissions**: 755 (root:root)
 - **Access**: Readable by all, writable by root
-- **Subdirectories**: jellyfin/ (Phase 3), immich/ (Phase 4), wiki/, etc. (future phases)
-- **Created**: Phase 2, Task 2.1
+- **Subdirectories**: jellyfin/ (Phase 3), immich/ (Phase 4), wiki/ (Phase 5), plus one dir per helper-managed service (Phase 6)
+- **Created**: Phase 2, Task 2.1; helper-managed dirs created on `add`
 
 ## Media Subdirectories
 
@@ -225,6 +225,15 @@ Data storage organization across two LUKS-encrypted partitions:
 - **Created**: Phase 5, Task 5.6
 - **Docker Mount**: /app/backend/data in open-webui container
 - **Backup**: rsync to /mnt/backup/wiki-llm/openwebui-data/
+
+### /mnt/data/services/{service-name}/ (Phase 6 — helper-managed)
+- **Purpose**: Persistent data for any service deployed via the docker service helper (see `docs/16-docker-service-helper.md`)
+- **Permissions**: `run_as` UID:GID if set in the service definition, otherwise 777 (any UID can write)
+- **Access**: the service's container (read-write)
+- **Created**: automatically on `docker-service-helper.sh add <name>` (one directory per service)
+- **Docker Mount**: mounted into the container per the generated compose file
+- **Backup**: `backup-helper-services.sh` rsyncs each service data dir to `/mnt/backup/helper-services/{service-name}/`, with an optional `backup.pre_command` snapshot (e.g. DB dump) run first
+- **Multi-container**: sidecars (`extra_containers`) store their data under the same service dir (e.g. `/mnt/data/services/{name}/postgres/`, `/mnt/data/services/{name}/mongodb/`)
 
 ## Backup Subdirectories
 
