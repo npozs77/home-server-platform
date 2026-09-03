@@ -81,11 +81,21 @@ for script_rel in "${SCRIPTS[@]}"; do
             print_fail "${script_name}: missing optional branch argument support"
         fi
 
+        # IaC convergence: fetch + reset --hard origin/${BRANCH} (not a merge/pull),
+        # so the server becomes exactly equal to the remote.
         TESTS_RUN=$((TESTS_RUN + 1))
-        if grep -q 'git pull origin.*\${BRANCH}' "$script_path"; then
-            print_pass "${script_name}: uses BRANCH variable in git pull"
+        if grep -q 'git reset --hard "origin/\${BRANCH}"' "$script_path"; then
+            print_pass "${script_name}: converges to origin/\${BRANCH} via reset --hard"
         else
-            print_fail "${script_name}: git pull does not use BRANCH variable"
+            print_fail "${script_name}: does not reset --hard to origin/\${BRANCH}"
+        fi
+
+        # Local changes must be guarded, not silently discarded.
+        TESTS_RUN=$((TESTS_RUN + 1))
+        if grep -q 'git status --porcelain' "$script_path" && grep -q '\-\-force' "$script_path"; then
+            print_pass "${script_name}: warns/stops on local changes (requires approval or --force)"
+        else
+            print_fail "${script_name}: missing local-changes guard before discarding"
         fi
     fi
 
