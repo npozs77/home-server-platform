@@ -69,8 +69,17 @@ media.home.mydomain.com {
 }
 
 # Immich Photo Management (Phase 4)
+# Extended timeouts for large photo/video uploads from mobile devices
 photos.home.mydomain.com {
-    reverse_proxy immich-server:2283
+    request_body {
+        max_size 50G
+    }
+    reverse_proxy immich-server:2283 {
+        transport http {
+            read_timeout 600s
+            write_timeout 600s
+        }
+    }
     tls internal
     log {
         output file /var/log/caddy/photos-access.log

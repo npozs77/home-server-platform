@@ -17,9 +17,11 @@ services:
     port: 8080
     visibility: public
     subdomain: vocab
-    run_as: "100:101"
     environment:
       NODE_ENV: "production"
+      VOCABGEN_API_KEY: "${VOCABGEN_API_KEY}"
+      VOCABGEN_API_KEY_NAME: "mcp-server"
+      VOCABGEN_API_KEY_SCOPE: "read-only"
     memory_limit: "512M"
     cpu_limit: "1.0"
     healthcheck:
