@@ -20,6 +20,8 @@
 SERVER ?= homeserver
 BRANCH ?= main
 PHASE ?=
+SERVICE ?=
+ARGS ?=
 REMOTE ?= origin
 SERVER_DIR ?= /opt/homeserver
 
@@ -110,3 +112,8 @@ server-status: ## Show the server's current branch, HEAD, and working-tree statu
 .PHONY: validate
 validate: ## Run server phase validation (all phases, or one with PHASE=N)
 	$(call srun,sudo bash scripts/operations/validate-all.sh $(if $(PHASE),--phase $(PHASE),))
+
+.PHONY: update-core
+update-core: ## Update a core service (SERVICE=wiki|immich|ollama|jellyfin; +ARGS="--dry-run")
+	@[ -n "$(SERVICE)" ] || { echo "Usage: make update-core SERVICE=wiki [ARGS=--dry-run]"; exit 2; }
+	$(call srun,sudo bash scripts/operations/update-core-service.sh $(SERVICE) $(ARGS))
