@@ -240,6 +240,7 @@ sudo mount /dev/mapper/backup_crypt /mnt/backup
 
 ```json
 {
+  "data-root": "/mnt/data/docker",
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "10m",
@@ -255,6 +256,12 @@ sudo mount /dev/mapper/backup_crypt /mnt/backup
 - Total max logs per container: 30 MB
 
 **Storage Driver**: overlay2 (recommended for Ubuntu)
+
+**Data-Root**: `/mnt/data/docker` (on the encrypted data volume, not the default `/var/lib/docker`)
+- Keeps image layers (overlay2) off the small OS/root partition
+- Value from `DOCKER_DATA_ROOT` in foundation.env (default `/mnt/data/docker`)
+- Requires systemd drop-in `/etc/systemd/system/docker.service.d/10-data-root-mount.conf` with `RequiresMountsFor=/mnt/data` so dockerd starts only after the encrypted volume mounts
+- Existing servers: migrate via docs/18-docker-data-root-migration.md
 
 ### Docker Group
 
@@ -535,7 +542,8 @@ sudo systemctl status unattended-upgrades
 
 **Docker**:
 - `/etc/docker/daemon.json` - Docker daemon configuration
-- `/var/lib/docker/` - Docker data directory
+- `/mnt/data/docker/` - Docker data directory (data-root; relocated from default `/var/lib/docker`)
+- `/etc/systemd/system/docker.service.d/10-data-root-mount.conf` - Boot-ordering drop-in (start after `/mnt/data` mount)
 
 **LUKS**:
 - `/etc/crypttab` - Encrypted partition auto-unlock
