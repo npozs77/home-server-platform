@@ -100,6 +100,18 @@ bash scripts/operations/utils/deploy-update.sh main
 - Always return to main after testing: `deploy-update.sh main`
 - The branch must exist on the remote (push before pulling on server)
 
+## Updating Containers
+
+`deploy-update.sh` / `make deploy` sync **code** (scripts, configs, compose
+templates) — they do not pull new Docker **images**. Image updates are separate:
+
+- **Core platform services** (Wiki.js, Immich, Ollama/Open WebUI, Jellyfin):
+  `make update-core SERVICE=<name>` — backs up (if stateful), pulls, recreates,
+  validates. See `docs/17-core-service-updates.md`. `docker-run` infra
+  (caddy/pihole/netdata) is updated via its Phase 2 task, not this path.
+- **Helper-managed services** (e.g. vocabgen, musivault):
+  `docker-service-helper.sh update <name>` — see `docs/16-docker-service-helper.md`.
+
 ## Drift Detection
 
 The drift check script (`scripts/operations/monitoring/check-drift.sh`) detects when the server diverges from the repo:

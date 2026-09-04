@@ -3,7 +3,7 @@
 ## Overview
 
 Data storage organization across two LUKS-encrypted partitions:
-- `/mnt/data/` — Primary data partition (NVMe, `/dev/nvme0n1p3`). User data, media, service data.
+- `/mnt/data/` — Primary data partition (NVMe, `/dev/nvme0n1p3`). User data, media, service data, and the Docker data-root (`docker/`).
 - `/mnt/backup/` — DAS backup partition (`/dev/sdb2`, ~900GB). Backup destination for configs, Immich, and Wiki.js data.
 
 ## Directory Structure
@@ -95,6 +95,16 @@ Data storage organization across two LUKS-encrypted partitions:
 - **Access**: Readable by all, writable by root
 - **Subdirectories**: jellyfin/ (Phase 3), immich/ (Phase 4), wiki/ (Phase 5), plus one dir per helper-managed service (Phase 6)
 - **Created**: Phase 2, Task 2.1; helper-managed dirs created on `add`
+
+### /mnt/data/docker/
+- **Purpose**: Docker daemon data-root — image layers (overlay2), containers, and named volumes
+- **Permissions**: 710 (root:root — created by dockerd)
+- **Access**: Managed by the Docker daemon; do not modify by hand
+- **Rationale**: Relocated off the small OS/root partition (~50GB) to prevent image layers from filling root; set via `DOCKER_DATA_ROOT` in foundation.env (default `/mnt/data/docker`)
+- **Boot ordering**: Docker starts only after `/mnt/data` mounts (systemd drop-in `RequiresMountsFor=/mnt/data`)
+- **Created**: Phase 1, Task 3.1 (Docker install) on fresh installs; via migration runbook on existing servers
+- **Not backed up**: Regenerable (images re-pullable, container/volume state is transient); persistent service data lives under `services/`, which is backed up separately
+- **See**: docs/18-docker-data-root-migration.md, .kiro/specs/01-foundation/design.md (Section 7)
 
 ## Media Subdirectories
 
