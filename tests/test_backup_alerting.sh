@@ -199,11 +199,15 @@ test_das_setup_idempotency() {
 test_crypttab_fstab_options() {
     run_test "Property 14: crypttab/fstab entries contain required options"
 
-    # Test 1: crypttab entry contains nofail,noauto
-    if grep -q 'nofail,noauto' "$SETUP_DAS"; then
-        print_pass "crypttab entry contains nofail,noauto"
+    # Test 1: crypttab entry contains nofail and does NOT contain noauto.
+    # The DAS is permanently attached, so it must auto-unlock + auto-mount on
+    # boot (noauto was dropped — it caused /mnt/backup to stay unmounted after
+    # a reboot, silently skipping backups). nofail alone keeps boot resilient
+    # if the DAS is ever disconnected.
+    if grep -q 'luks,nofail' "$SETUP_DAS" && ! grep -q 'nofail,noauto' "$SETUP_DAS"; then
+        print_pass "crypttab entry contains nofail (noauto correctly removed)"
     else
-        print_fail "crypttab entry missing nofail,noauto options"
+        print_fail "crypttab entry should contain 'luks,nofail' and must not contain 'nofail,noauto'"
     fi
 
     # Test 2: fstab entry contains nofail
@@ -285,6 +289,43 @@ test_no_luks_mode() {
         print_pass "No-LUKS fstab entry contains nofail"
     else
         print_fail "No-LUKS fstab entry missing nofail"
+    fi
+}
+
+# ============================================================
+# Feature: backup-alerting — backup-configs.sh backs up proton-mail-utils config
+# Validates: Requirement 26 (Server Configuration Backup — proton-mail-utils)
+# ============================================================
+test_backup_configs_includes_proton_mail_utils() {
+    run_test "Unit: backup-configs.sh backs up /etc/proton-mail-utils/"
+
+    # Source path is rsynced
+    if grep -q '/etc/proton-mail-utils/' "$BACKUP_CONFIGS"; then
+        print_pass "backup-configs.sh references /etc/proton-mail-utils/"
+    else
+        print_fail "backup-configs.sh does not back up /etc/proton-mail-utils/"
+    fi
+
+    # Destination dir is created via mkdir -p
+    if grep -qE 'mkdir -p.*proton-mail-utils' "$BACKUP_CONFIGS"; then
+        print_pass "backup-configs.sh creates proton-mail-utils destination dir"
+    else
+        print_fail "backup-configs.sh missing mkdir for proton-mail-utils destination"
+    fi
+
+    # Uses the same rsync -a --delete mirror pattern
+    if grep -E 'rsync -a --delete.*proton-mail-utils' "$BACKUP_CONFIGS" >/dev/null \
+       || grep -A2 'proton-mail-utils' "$BACKUP_CONFIGS" | grep -q 'rsync -a --delete'; then
+        print_pass "proton-mail-utils uses rsync -a --delete mirror pattern"
+    else
+        print_fail "proton-mail-utils not synced with rsync -a --delete"
+    fi
+
+    # Missing source is handled gracefully (guarded by directory existence check)
+    if grep -q '\[\[ -d /etc/proton-mail-utils \]\]' "$BACKUP_CONFIGS"; then
+        print_pass "backup-configs.sh guards against missing proton-mail-utils dir"
+    else
+        print_fail "backup-configs.sh does not guard against missing proton-mail-utils dir"
     fi
 }
 
@@ -1352,6 +1393,7 @@ test_scripts_valid_syntax
 test_scripts_loc_limits
 test_backup_scripts_source_log_utils
 test_backup_scripts_use_env_vars
+test_backup_configs_includes_proton_mail_utils
 test_wiki_checks_data_dir
 test_immich_uses_mountpoint
 test_immich_uses_structured_log
