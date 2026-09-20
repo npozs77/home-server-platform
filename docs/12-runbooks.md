@@ -218,16 +218,30 @@ Copy header backups to a USB drive and store offline.
 
 ### DAS Not Opening at Boot
 
-The DAS is configured with `nofail,noauto` in crypttab, so it is intentionally not auto-opened at boot. To open and mount manually:
+The DAS is configured with `luks,nofail` in crypttab, so it **auto-unlocks and auto-mounts on every boot**. `nofail` still lets the system boot cleanly if the DAS is physically disconnected.
+
+> **Note**: This changed from the original `luks,nofail,noauto`. The `noauto`
+> flag suppressed auto-unlock, so after a reboot `/mnt/backup` stayed unmounted
+> until manually opened — which caused the 02:00 backup to abort (mount guard)
+> and silently skip backups. If you ever revert to a disconnected-DAS setup,
+> re-add `noauto` and unlock manually.
+
+If auto-mount fails (e.g. the DAS was disconnected at boot), open and mount manually:
 
 ```bash
-sudo cryptsetup luksOpen /dev/sdb2 backup_crypt
-sudo mount /dev/mapper/backup_crypt /mnt/backup
+sudo cryptsetup luksOpen /dev/sdb2 backup_crypt --key-file /root/.luks-key
+sudo mount /mnt/backup
 ```
 
 To verify it's mounted:
 ```bash
 mountpoint -q /mnt/backup && echo "MOUNTED" || echo "NOT MOUNTED"
+```
+
+After a reboot, confirm the DAS came up on its own:
+```bash
+systemctl is-active systemd-cryptsetup@backup_crypt.service   # expect: active
+mountpoint -q /mnt/backup && echo "auto-mounted OK"
 ```
 
 ### Both Keys Lost (Passphrase + Key File)
