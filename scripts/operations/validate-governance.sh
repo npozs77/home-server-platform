@@ -129,7 +129,8 @@ check_safety_flags() {
 }
 
 check_executable_bits() {
-    # Every tracked *.sh under scripts/ must carry the git executable bit (100755).
+    # Every tracked *.sh under scripts/ and private/scripts/ (cron runs both by path)
+    # must carry the git executable bit (100755).
     # This machine may have core.filemode=false, which makes `git add` silently
     # record new scripts as 100644 even when the working tree marks them +x. On
     # the server (git-pull deploy model) such a file lands non-executable and any
@@ -141,10 +142,10 @@ check_executable_bits() {
     fi
 
     local non_exec
-    non_exec=$(git -C "$REPO_ROOT" ls-files -s -- 'scripts/*.sh' | awk '$1 == "100644" {print $4}')
+    non_exec=$(git -C "$REPO_ROOT" ls-files -s -- 'scripts/*.sh' 'private/scripts/*.sh' | awk '$1 == "100644" {print $4}')
 
     if [[ -z "$non_exec" ]]; then
-        print_pass "Executable bits: all tracked scripts/*.sh are executable (100755)"
+        print_pass "Executable bits: all tracked scripts/*.sh and private/scripts/*.sh are executable (100755)"
         return 0
     fi
 
