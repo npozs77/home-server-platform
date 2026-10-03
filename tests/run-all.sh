@@ -9,7 +9,9 @@ CI_MODE=false
 [[ "${1:-}" == "--ci" ]] && CI_MODE=true
 
 PASS=0; FAIL=0; SKIP=0; FAILED=()
-for f in "$(dirname "$0")"/test_*.sh; do
+# Private suites (private/tests/) run here too; private/ is stripped from the public mirror.
+shopt -s nullglob
+for f in "$(dirname "$0")"/test_*.sh "$(dirname "$0")"/../private/tests/test_*.sh; do
     name=$(basename "$f")
 
     # In CI mode, only run tests with CI_SAFE=true marker in first 5 lines

@@ -56,3 +56,9 @@ configs/helper-services/*.bak
 configs/helper-services/*.bak.*
 !configs/helper-services/.gitkeep
 !configs/helper-services/services.yml.example
+
+# Python (apps/*)
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
