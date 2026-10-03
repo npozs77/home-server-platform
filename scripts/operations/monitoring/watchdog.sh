@@ -5,7 +5,8 @@
 # Checks:
 #   0. Container health check freshness (cron still firing?)
 #   1. Backup log exists for today
-#   2. Backup completed successfully
+#   2. Backup completed successfully (success marker present)
+#   3. Distinguishes: still-running (skip), empty/no-output (interrupted), failed
 #
 # This is a safety net — catches silent failures that individual
 # scripts can't report (crashed cron, hung processes, missing logs).
@@ -88,6 +89,18 @@ fi
 BACKUP_LOCK="/run/backup-all.lock"
 if [[ -e "$BACKUP_LOCK" ]] && ! ( flock -n 9 ) 9>"$BACKUP_LOCK"; then
     log_msg "WARN" "$SCRIPT_NAME" "Backup still running at $(date '+%H:%M') — skipping alert"
+    exit 0
+fi
+
+# Check 3a: Log exists, backup is NOT still running, but the log is empty (0 bytes)
+# or contains no log lines. This means the run produced no output at all — it was
+# interrupted (server shutdown/kill) or died before logging. Distinct from
+# "ran but a job failed", so it gets its own clear message.
+if [[ ! -s "$BACKUP_LOG" ]] || ! grep -q '\[INFO\]\|\[ERROR\]' "$BACKUP_LOG" 2>/dev/null; then
+    log_msg "ERROR" "$SCRIPT_NAME" "Backup log empty for $(date '+%Y-%m-%d') — run produced no output"
+    send_alert_email \
+        "[HOMESERVER] Backup NO OUTPUT - $(date '+%Y-%m-%d')" \
+        "Hostname: $(hostname)\nTimestamp: $(date '+%Y-%m-%d %H:%M:%S')\n\nToday's backup log exists but is empty (no log lines).\nLog: ${BACKUP_LOG}\n\nThe backup ran (log file was created) but produced no output — it was likely interrupted (server shutdown, OOM kill, or hung and killed) before completing.\n\nCheck:\n- cron execution: grep backup-all /var/log/syslog\n- system was up at 02:00: last reboot\n- run manually: sudo /opt/homeserver/scripts/backup/backup-all.sh --dry-run"
     exit 0
 fi
 

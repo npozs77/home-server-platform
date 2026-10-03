@@ -44,6 +44,12 @@ configs/netdata/
 configs/docker-compose/*.yml
 !configs/docker-compose/*.yml.example
 
+# Docker daemon config (live copies generated from env; only .example is Git-tracked)
+# Live files deploy to /etc/docker/ and /etc/systemd/system/docker.service.d/ (outside repo)
+configs/docker/daemon.json
+configs/docker/*.conf
+!configs/docker/*.example
+
 # Service persistent data (managed by Docker, not Git)
 configs/docker-compose/*/data/
 configs/docker-compose/*/config/

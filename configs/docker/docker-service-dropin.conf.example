@@ -1,0 +1,13 @@
+# systemd drop-in for docker.service
+# Deployed to: /etc/systemd/system/docker.service.d/10-data-root-mount.conf
+#
+# Ensures the Docker daemon starts only after the LUKS-encrypted data volume
+# (DATA_MOUNT, default /mnt/data) is mounted. Docker's data-root lives on that
+# volume (see daemon.json.example), so starting before the mount is available
+# would cause containers to fail on boot.
+#
+# Regenerated from configs/foundation.env (DOCKER_DATA_ROOT) by the deploy task;
+# not backed up separately since it is fully derived from the committed template.
+
+[Unit]
+RequiresMountsFor=/mnt/data

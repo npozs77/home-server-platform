@@ -106,9 +106,11 @@ else
     fi
     # crypttab entry
     local_uuid=$(blkid -o value -s UUID "$DEVICE" 2>/dev/null || echo "UNKNOWN")
+    # luks,nofail (no noauto): permanently-attached DAS auto-unlocks + auto-mounts
+    # on boot; nofail still lets the system boot cleanly if the DAS is disconnected.
     if ! grep -q "$MAPPER_NAME" /etc/crypttab 2>/dev/null; then
-        run_cmd bash -c "echo '${MAPPER_NAME} UUID=${local_uuid} ${KEY_FILE} luks,nofail,noauto' >> /etc/crypttab"
-        log_msg "INFO" "$SCRIPT_NAME" "Added crypttab entry for $MAPPER_NAME (nofail,noauto)"
+        run_cmd bash -c "echo '${MAPPER_NAME} UUID=${local_uuid} ${KEY_FILE} luks,nofail' >> /etc/crypttab"
+        log_msg "INFO" "$SCRIPT_NAME" "Added crypttab entry for $MAPPER_NAME (nofail)"
     else
         log_msg "INFO" "$SCRIPT_NAME" "crypttab entry for $MAPPER_NAME already exists — skipping"
     fi

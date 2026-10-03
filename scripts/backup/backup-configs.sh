@@ -57,7 +57,7 @@ log_msg "INFO" "$SCRIPT_NAME" "Starting server config backup${DRY_LABEL}"
 FAILURES=0
 
 # Ensure destination directories exist
-mkdir -p "${BACKUP_DEST}/homeserver" "${BACKUP_DEST}/system"
+mkdir -p "${BACKUP_DEST}/homeserver" "${BACKUP_DEST}/system" "${BACKUP_DEST}/proton-mail-utils"
 
 # Rsync server configs (mirror)
 log_msg "INFO" "$SCRIPT_NAME" "Syncing /opt/homeserver/configs/ ..."
@@ -71,6 +71,19 @@ log_msg "INFO" "$SCRIPT_NAME" "Syncing /opt/homeserver/scripts/ ..."
 if ! rsync -a --delete $DRY_RUN_FLAG /opt/homeserver/scripts/ "${BACKUP_DEST}/homeserver/scripts/"; then
     log_msg "ERROR" "$SCRIPT_NAME" "rsync failed for /opt/homeserver/scripts/"
     FAILURES=$((FAILURES + 1))
+fi
+
+# Rsync proton-mail-utils config (mirror): .env (identifiers) + dns-records.yaml
+# (hand-curated DNS zone source of truth). No secrets — Cloudflare tokens are
+# fetched from Proton Pass at runtime, never stored on disk.
+if [[ -d /etc/proton-mail-utils ]]; then
+    log_msg "INFO" "$SCRIPT_NAME" "Syncing /etc/proton-mail-utils/ ..."
+    if ! rsync -a --delete $DRY_RUN_FLAG /etc/proton-mail-utils/ "${BACKUP_DEST}/proton-mail-utils/"; then
+        log_msg "ERROR" "$SCRIPT_NAME" "rsync failed for /etc/proton-mail-utils/"
+        FAILURES=$((FAILURES + 1))
+    fi
+else
+    log_msg "WARN" "$SCRIPT_NAME" "/etc/proton-mail-utils/ not found — skipping (pmu not installed?)"
 fi
 
 # Copy system files

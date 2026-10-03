@@ -113,6 +113,12 @@ docker ps
 
 Only use if Docker daemon itself has issues:
 
+> **Note**: Docker's data-root is on the encrypted `/mnt/data` volume. If the
+> daemon fails to start, confirm `/mnt/data` is mounted first
+> (`mountpoint -q /mnt/data`). The systemd drop-in
+> `RequiresMountsFor=/mnt/data` enforces this ordering on boot. See
+> docs/18-docker-data-root-migration.md.
+
 ```bash
 # Stop all containers gracefully
 docker stop $(docker ps -q)
@@ -558,6 +564,7 @@ docker ps | grep -E "ollama|open-webui"
 ## Related Documentation
 
 - docs/12-runbooks.md (Network Unreachability troubleshooting)
+- docs/18-docker-data-root-migration.md (Relocating Docker data-root to /mnt/data)
 - docs/02-infrastructure-layer.md (Infrastructure architecture)
 - docs/09-immich-setup.md (Immich setup and configuration)
 - docs/10-wiki-setup.md (Wiki.js setup and configuration)
