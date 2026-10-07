@@ -50,8 +50,15 @@ fi
 FETCH_OK=true
 _GIT_SSH_CMD=""
 _FETCH_URL="origin"
+# Fetch as the checkout's owner, never as root: a root fetch creates root-owned
+# refs/objects for every new branch, and the owner's next `git pull` then fails
+# with "cannot lock ref … Permission denied".
+_AS_OWNER=()
 if [[ $EUID -eq 0 ]]; then
     REPO_OWNER=$(stat -c '%U' "$REPO_DIR/.git" 2>/dev/null || echo "")
+    if [[ -n "$REPO_OWNER" ]] && [[ "$REPO_OWNER" != "root" ]]; then
+        _AS_OWNER=(runuser -u "$REPO_OWNER" --)
+    fi
     DEPLOY_KEY="/home/${REPO_OWNER}/.ssh/deploy_key"
     if [[ -n "$REPO_OWNER" ]] && [[ -f "$DEPLOY_KEY" ]]; then
         _GIT_SSH_CMD="ssh -i ${DEPLOY_KEY} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
@@ -68,9 +75,9 @@ if [[ $EUID -eq 0 ]]; then
     fi
 fi
 if [[ -n "$_GIT_SSH_CMD" ]]; then
-    GIT_SSH_COMMAND="$_GIT_SSH_CMD" git fetch "$_FETCH_URL" "+refs/heads/*:refs/remotes/origin/*" 2>/dev/null || { add_warning "git fetch failed — network or deploy key issue, local-only checks follow"; FETCH_OK=false; }
+    ${_AS_OWNER[@]+"${_AS_OWNER[@]}"} env GIT_SSH_COMMAND="$_GIT_SSH_CMD" git fetch "$_FETCH_URL" "+refs/heads/*:refs/remotes/origin/*" 2>/dev/null || { add_warning "git fetch failed — network or deploy key issue, local-only checks follow"; FETCH_OK=false; }
 else
-    git fetch origin 2>/dev/null || { add_warning "git fetch failed — network or deploy key issue, local-only checks follow"; FETCH_OK=false; }
+    ${_AS_OWNER[@]+"${_AS_OWNER[@]}"} git fetch origin 2>/dev/null || { add_warning "git fetch failed — network or deploy key issue, local-only checks follow"; FETCH_OK=false; }
 fi
 
 # Check 2: Commits behind origin/{current branch}
